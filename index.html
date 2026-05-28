@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lwazi OS | Intelligence Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --brand: #2563eb;
+            --top-bg: #0f172a;
+            --bg-canvas: #f1f5f9;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --emerald: #10b981;
+            --rose: #f43f5e;
+            --white: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-canvas); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* --- TIER 1: BRANDING --- */
+        .tier-1 { background: var(--top-bg); color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; }
+        .logo span { color: var(--brand); font-size: 0.8rem; letter-spacing: 1px; }
+
+        /* --- TIER 2: PRIMARY NAVIGATION --- */
+        .tier-2 { background: var(--white); border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .nav-links { display: flex; gap: 24px; height: 100%; }
+        .nav-link { height: 100%; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; transition: 0.2s; }
+        .nav-link.active { color: var(--brand); border-bottom-color: var(--brand); }
+        .nav-link:hover { color: var(--brand); }
+
+        /* --- TIER 3: COMMAND BAR --- */
+        .tier-3 { background: var(--white); border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+
+        /* --- MAIN VIEWPORT --- */
+        main { flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-content: start; }
+        .stats-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+        .stat-value { font-size: 24px; font-weight: 700; }
+
+        .card { background: white; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-header { padding: 0 24px; height: 50px; background: #f8fafc; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+
+        .tabs-header { display: flex; gap: 20px; height: 100%; }
+        .tab-item { height: 100%; display: flex; align-items: center; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text-muted); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab-item.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+        .scroll-area { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background: #f8fafc; padding: 12px 20px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+        td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        tr.active-case td { background: #f5f8ff; border-left: 4px solid var(--brand); }
+
+        .notification-item { padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; gap: 15px; align-items: center; }
+        .notif-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: var(--brand); font-size: 16px; }
+        .notif-icon.warn { background: #fff1f2; color: var(--rose); }
+
+        .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; }
+        .btn-brand { background: var(--brand); color: white; }
+        .btn-outline { background: white; border-color: var(--border); color: var(--text-main); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .input-ctrl { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
+        .modal-card { background: white; width: 450px; border-radius: 16px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); }
+        code { font-family: 'JetBrains Mono', monospace; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <!-- TIER 1 -->
+    <header class="tier-1">
+        <div class="logo"><i class="ph-fill ph-scales"></i> LWAZI <span>INTELLIGENCE</span></div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <div style="text-align:right"><div style="font-size:12px; font-weight:700">Attorney Alpha</div><div style="font-size:10px; color:#94a3b8">Role: SuperUser</div></div>
+            <div style="width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display:flex; align-items:center; justify-content:center; font-weight:800; color:white;">AA</div>
+        </div>
+    </header>
+
+    <!-- TIER 2: SHARED NAVIGATION -->
+    <nav class="tier-2">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link active"><i class="ph ph-chart-line"></i> Dashboard</a>
+            <a href="matters.html" class="nav-link"><i class="ph ph-briefcase"></i> Operations Hub</a>
+            <a href="files.html" class="nav-link"><i class="ph ph-vault"></i> Evidence Vault</a>
+        </div>
+    </nav>
+
+    <!-- TIER 3 -->
+    <section class="tier-3">
+        <div class="control-group">
+            <button class="btn btn-brand" onclick="openModal('m-modal')"><i class="ph ph-plus-circle"></i> New Matter</button>
+            <button class="btn btn-outline matter-btn" disabled onclick="openModal('email-modal')"><i class="ph ph-paper-plane-tilt"></i> Create Email</button>
+            <div style="width: 1px; height: 24px; background: var(--border); margin: 0 5px;"></div>
+            <button class="btn btn-outline matter-btn" disabled onclick="ingestSim('Forensic')"><i class="ph ph-hard-drive"></i> Ingest</button>
+            <button class="btn btn-outline matter-btn" id="hold-btn" disabled onclick="toggleHold()"><i class="ph ph-lock"></i> Legal Hold</button>
+        </div>
+        <div class="control-group">
+            <input type="text" class="input-ctrl" placeholder="Global Context Search..." style="width: 250px;">
+        </div>
+    </section>
+
+    <main>
+        <!-- STATS -->
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-label">System Health</div><div class="stat-value" style="color:var(--emerald)">Optimal</div></div>
+            <div class="stat-card"><div class="stat-label">Active Matters</div><div class="stat-value" id="stat-matters">0</div></div>
+            <div class="stat-card"><div class="stat-label">Discovery Units</div><div class="stat-value" id="stat-docs">0</div></div>
+            <div class="stat-card"><div class="stat-label">Audit Alerts</div><div class="stat-value" id="stat-notif" style="color:var(--rose)">0</div></div>
+        </div>
+
+        <!-- LEFT: MATTERS -->
+        <div class="card">
+            <div class="card-header"><h3>Matter Index</h3></div>
+            <div class="scroll-area">
+                <table>
+                    <thead><tr><th>ID</th><th>Caption</th><th>Lead</th><th>Action</th></tr></thead>
+                    <tbody id="matter-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RIGHT: TABBED INTELLIGENCE -->
+        <div class="card">
+            <div class="card-header" style="padding: 0 24px;">
+                <div class="tabs-header">
+                    <div class="tab-item active" id="tab-analytics-link" onclick="switchTab('analytics')">Analytics</div>
+                    <div class="tab-item" id="tab-notifications-link" onclick="switchTab('notifications')">Notifications</div>
+                    <div class="tab-item" id="tab-requests-link" onclick="switchTab('requests')">Requests</div>
+                </div>
+            </div>
+            
+            <div id="tab-analytics" class="tab-content" style="padding: 24px; flex:1;">
+                <canvas id="analyticsChart" style="max-height: 280px;"></canvas>
+            </div>
+
+            <div id="tab-notifications" class="tab-content" style="display:none; flex:1; overflow-y:auto;">
+                <div id="notification-list"></div>
+            </div>
+
+            <div id="tab-requests" class="tab-content" style="display:none; flex:1;">
+                <table>
+                    <thead><tr><th>Req_ID</th><th>Description</th><th>Priority</th></tr></thead>
+                    <tbody id="request-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- BOTTOM: VAULT -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <div class="card-header">
+                <h3>Forensic Audit Trail: <span id="active-matter-label" style="color:var(--brand)">No Active Matter</span></h3>
+            </div>
+            <div class="scroll-area">
+                <table>
+                    <thead><tr><th>Bates ID</th><th>Filename</th><th>MD5 Hash Checksum</th><th>Source</th><th>Date</th></tr></thead>
+                    <tbody id="vault-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- NEW MATTER MODAL -->
+    <div id="m-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h2 style="margin-bottom: 20px;">Initialize Matter</h2>
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                <input type="text" id="new-m-name" class="input-ctrl" placeholder="Matter Name">
+                <input type="text" id="new-m-pre" class="input-ctrl" placeholder="Bates Prefix (e.g. ABC)">
+                <input type="text" id="new-m-lead" class="input-ctrl" placeholder="Lead Attorney">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+                <button class="btn btn-outline" onclick="closeModal('m-modal')">Cancel</button>
+                <button class="btn btn-brand" onclick="createMatter()">Initialize</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EMAIL MODAL -->
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h2 style="margin-bottom: 20px;">Draft Legal Communication</h2>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <input type="text" class="input-ctrl" placeholder="Recipient Address">
+                <input type="text" id="email-subject" class="input-ctrl" placeholder="Subject">
+                <textarea class="input-ctrl" style="height: 150px; resize: none;" placeholder="Message Body..."></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button class="btn btn-outline" onclick="closeModal('email-modal')">Discard</button>
+                <button class="btn btn-brand" onclick="sendEmailSim()">Send Encrypted Email</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SHARED DATA ENGINE ---
+        const DB_KEY = 'LWAZI_OS_DATA';
+        let state = JSON.parse(localStorage.getItem(DB_KEY)) || {
+            matters: [],
+            notifications: [{ type: 'info', msg: 'System Audit Engine Online.', time: '09:00:00' }],
+            requests: [{ id: 'R-101', desc: 'Employee Metadata Export', pri: 'High' }],
+            selectedMatterId: null
+        };
+
+        let chart = null;
+
+        function sync() {
+            localStorage.setItem(DB_KEY, JSON.stringify(state));
+            render();
+            updateStats();
+            updateChart();
+        }
+
+        // UI Helpers
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+            document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).style.display = 'block';
+            document.getElementById(`tab-${tab}-link`).classList.add('active');
+        }
+
+        function pushNotif(msg, type = 'info') {
+            state.notifications.unshift({ type, msg, time: new Date().toLocaleTimeString() });
+            sync();
+        }
+
+        // Core Functions
+        function createMatter() {
+            const name = document.getElementById('new-m-name').value;
+            const prefix = document.getElementById('new-m-pre').value.toUpperCase();
+            const lead = document.getElementById('new-m-lead').value;
+            if(!name || !prefix) return;
+
+            const newMatter = {
+                id: 'MAT-' + Date.now().toString().slice(-4),
+                name, prefix, lead,
+                hold: false,
+                events: [],
+                files: [],
+                number: 'TBD-' + Math.floor(Math.random()*1000),
+                jurisdiction: 'Unassigned',
+                type: 'Civil Litigation'
+            };
+            state.matters.push(newMatter);
+            pushNotif(`New Matter initialized: ${name}`, 'success');
+            closeModal('m-modal');
+            sync();
+        }
+
+        function selectMatter(id) {
+            state.selectedMatterId = id;
+            document.querySelectorAll('.matter-btn').forEach(b => b.disabled = false);
+            sync();
+        }
+
+        function toggleHold() {
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            m.hold = !m.hold;
+            pushNotif(`Legal Hold ${m.hold ? 'Applied' : 'Released'} on ${m.name}`, m.hold ? 'warn' : 'info');
+            sync();
+        }
+
+        function sendEmailSim() {
+            const subject = document.getElementById('email-subject').value;
+            pushNotif(`Outbound Email Logged: ${subject}`, 'info');
+            closeModal('email-modal');
+        }
+
+        function ingestSim(source) {
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            if(!m.files) m.files = [];
+            const bates = `${m.prefix}-${(m.files.length + 1001)}`;
+            m.files.unshift({ 
+                id: 'FIL-' + Date.now(),
+                bates, 
+                name: `${source}_INGEST_${Math.floor(Math.random()*1000)}.PDF`, 
+                hash: Math.random().toString(16).slice(2,12).toUpperCase(), 
+                date: new Date().toLocaleDateString(),
+                source: source,
+                size: '244 KB',
+                path: ''
+            });
+            pushNotif(`Forensic Ingest Successful: ${bates}`, 'info');
+            sync();
+        }
+
+        // Rendering
+        function render() {
+            const mBody = document.getElementById('matter-tbody');
+            mBody.innerHTML = state.matters.map(m => `
+                <tr class="clickable ${state.selectedMatterId === m.id ? 'active-case' : ''}" onclick="selectMatter('${m.id}')">
+                    <td><code>${m.id}</code></td>
+                    <td><strong>${m.name}</strong></td>
+                    <td>${m.lead || '---'}</td>
+                    <td><button class="btn btn-outline" style="padding:4px 8px" onclick="location.href='matters.html'">Hub</button></td>
+                </tr>
+            `).join('');
+
+            const active = state.matters.find(x => x.id === state.selectedMatterId);
+            if(active) {
+                document.getElementById('active-matter-label').innerText = active.name;
+                document.getElementById('vault-tbody').innerHTML = (active.files || []).map(f => `
+                    <tr><td><code>${f.bates || 'DIR'}</code></td><td>${f.name}</td><td><code>${f.hash || '---'}</code></td><td>${f.source || 'Vault'}</td><td>${f.date || '--'}</td></tr>
+                `).join('');
+                document.getElementById('hold-btn').innerHTML = active.hold ? '<i class="ph ph-lock-open"></i> Release Hold' : '<i class="ph ph-lock"></i> Legal Hold';
+            }
+
+            document.getElementById('notification-list').innerHTML = state.notifications.map(n => `
+                <div class="notification-item">
+                    <div class="notif-icon ${n.type === 'warn' ? 'warn' : ''}"><i class="ph ph-${n.type === 'warn' ? 'warning-circle' : 'info'}"></i></div>
+                    <div><div style="font-size:13px; font-weight:600;">${n.msg}</div><div style="font-size:11px; color:var(--text-muted);">${n.time}</div></div>
+                </div>
+            `).join('');
+
+            document.getElementById('request-tbody').innerHTML = state.requests.map(r => `
+                <tr><td><code>${r.id}</code></td><td>${r.desc}</td><td><span style="color:var(--rose); font-weight:700;">${r.pri}</span></td></tr>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('stat-matters').innerText = state.matters.length;
+            document.getElementById('stat-notif').innerText = state.notifications.length;
+            let totalDocs = 0; 
+            state.matters.forEach(m => totalDocs += (m.files ? m.files.length : 0));
+            document.getElementById('stat-docs').innerText = totalDocs;
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('analyticsChart').getContext('2d');
+            const active = state.matters.find(x => x.id === state.selectedMatterId);
+            const docCount = active && active.files ? active.files.length : 0;
+            const data = active ? [docCount, Math.floor(docCount*0.4), Math.floor(docCount*0.1)] : [0, 0, 0];
+            
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Processed', 'Reviewed', 'Flagged'],
+                    datasets: [{ data: data, backgroundColor: ['#2563eb', '#10b981', '#f43f5e'] }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        window.onload = sync;
+    </script>
+</body>
+</html>

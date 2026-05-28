@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lwazi OS | Evidence Vault Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Cloud SDKs -->
+    <script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="YOUR_DROPBOX_APP_KEY"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --top-bg: #0f172a;
+            --bg-canvas: #f8fafc;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --emerald: #10b981;
+            --rose: #f43f5e;
+            --amber: #f59e0b;
+            --indigo: #6366f1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-canvas); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* --- UI TIERS --- */
+        .tier-1 { background: var(--top-bg); color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; }
+        .logo span { color: var(--primary); font-size: 0.8rem; letter-spacing: 1px; }
+
+        .tier-2 { background: white; border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .nav-links { display: flex; gap: 24px; height: 100%; }
+        .nav-link { height: 100%; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; transition: 0.2s; }
+        .nav-link.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .tier-3 { background: white; border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+
+        /* --- EXPLORER LAYOUT --- */
+        main { flex: 1; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 340px; }
+
+        .sidebar { border-right: 1px solid var(--border); background: white; display: flex; flex-direction: column; overflow-y: auto; }
+        .sidebar-header { padding: 20px; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .matter-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; transition: 0.2s; border-bottom: 1px solid #f1f5f9; }
+        .matter-item:hover { background: #f8fafc; }
+        .matter-item.active { background: #eff6ff; border-left-color: var(--primary); }
+        .matter-item .caption { font-size: 13px; font-weight: 700; display: block; }
+        .matter-item .sub { font-size: 11px; color: var(--text-muted); }
+
+        .explorer-view { background: white; display: flex; flex-direction: column; position: relative; }
+        .explorer-toolbar { height: 50px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
+        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+        .breadcrumb span { cursor: pointer; color: var(--text-muted); }
+        .breadcrumb span:hover { color: var(--primary); }
+        .breadcrumb span:last-child { color: var(--text-main); cursor: default; }
+
+        .scroll-area { flex: 1; overflow-y: auto; transition: background 0.2s; }
+        .scroll-area.drag-over { background: #eff6ff; outline: 2px dashed var(--primary); outline-offset: -10px; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background: #f8fafc; padding: 12px 20px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        td { padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+        tr:hover td { background: #f8fafc; }
+        tr.selected-row td { background: #f0f7ff; }
+
+        .inspector { border-left: 1px solid var(--border); background: #f8fafc; padding: 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .inspector h4 { font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+        .meta-box { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+        .meta-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .meta-value { font-size: 12px; font-weight: 600; word-break: break-all; margin-bottom: 12px; color: var(--text-main); }
+
+        .btn { padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: white; transition: 0.2s; }
+        .btn:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-brand { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn-brand:hover { background: #1d4ed8; color: white; }
+        .btn-danger { color: var(--rose); }
+        .btn-danger:hover { background: #fff1f2; border-color: var(--rose); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: var(--border) !important; color: var(--text-muted) !important; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
+        .modal-card { background: white; width: 400px; border-radius: 12px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-top: 5px; font-family: inherit; font-size: 13px; }
+        
+        #preview-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 4000; display: none; flex-direction: column; padding: 40px; }
+        .preview-content { background: white; flex: 1; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+        .preview-header { display: flex; justify-content: space-between; color: white; margin-bottom: 15px; }
+
+        .empty-state { padding: 60px; text-align: center; color: var(--text-muted); }
+        .empty-state i { font-size: 48px; margin-bottom: 15px; opacity: 0.3; }
+
+        .star-important { color: var(--amber); margin-right: 8px; }
+    </style>
+</head>
+<body>
+
+    <!-- TIER 1 -->
+    <header class="tier-1">
+        <div class="logo"><i class="ph-fill ph-database"></i> LWAZI <span>VAULT</span></div>
+        <div style="display:flex; gap:20px; align-items:center;">
+            <div style="text-align:right"><div style="font-size:12px; font-weight:700">Forensic Admin</div><div style="font-size:10px; color:#94a3b8">Secure Node: Vault_01</div></div>
+            <div style="width: 32px; height: 32px; background: var(--indigo); border-radius: 8px; display:flex; align-items:center; justify-content:center; font-weight:800; color:white;">FA</div>
+        </div>
+    </header>
+
+    <!-- TIER 2: SHARED NAVIGATION -->
+    <nav class="tier-2">
+        <div class="nav-links">
+            <a href="index.html" class="nav-link"><i class="ph ph-chart-line"></i> Dashboard</a>
+            <a href="matters.html" class="nav-link"><i class="ph ph-briefcase"></i> Operations Hub</a>
+            <a href="files.html" class="nav-link active"><i class="ph ph-folder-open"></i> Evidence Vault</a>
+        </div>
+    </nav>
+
+    <!-- TIER 3 -->
+    <section class="tier-3">
+        <div class="control-group">
+            <button class="btn" onclick="goBack()" id="back-btn" disabled><i class="ph ph-arrow-left"></i> Parent</button>
+            <div style="width: 1px; height: 20px; background: var(--border); margin: 0 10px;"></div>
+            <button class="btn matter-btn" disabled onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> New Folder</button>
+            <button class="btn btn-brand matter-btn" disabled onclick="document.getElementById('real-file-input').click()"><i class="ph ph-file-arrow-up"></i> Local Artifact</button>
+            <button class="btn matter-btn" disabled onclick="handleGoogleDrive()"><i class="ph ph-google-logo"></i> Drive</button>
+            <button class="btn matter-btn" disabled onclick="handleDropbox()"><i class="ph ph-dropbox-logo"></i> Dropbox</button>
+            <input type="file" id="real-file-input" style="display:none" multiple onchange="handleFileSelect(event)">
+        </div>
+        <div class="control-group">
+            <div style="position:relative">
+                <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:10px; color:var(--text-muted)"></i>
+                <input type="text" id="vault-search" placeholder="Search current directory..." style="width: 280px; margin: 0; padding: 8px 12px 8px 35px;" oninput="render()">
+            </div>
+        </div>
+    </section>
+
+    <main>
+        <aside class="sidebar">
+            <div class="sidebar-header">Matters</div>
+            <div id="matter-list"></div>
+        </aside>
+
+        <section class="explorer-view">
+            <div class="explorer-toolbar">
+                <div class="breadcrumb" id="breadcrumb"><span>Vault</span></div>
+                <div id="item-count" style="font-size: 11px; color: var(--text-muted); font-weight: 700;">0 Items</div>
+            </div>
+            <div class="scroll-area" id="explorer-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Bates / ID</th>
+                            <th>Date Modified</th>
+                            <th style="text-align:right">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody id="explorer-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <aside class="inspector" id="inspector-pane"></aside>
+    </main>
+
+    <!-- PREVIEW OVERLAY -->
+    <div id="preview-overlay">
+        <div class="preview-header">
+            <h3 id="preview-title">Forensic View</h3>
+            <button class="btn" onclick="closePreview()">Close Escape</button>
+        </div>
+        <div class="preview-content" id="preview-frame"></div>
+    </div>
+
+    <!-- FOLDER MODAL -->
+    <div id="folder-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h3>Create Directory</h3>
+            <div style="margin-top:15px">
+                <label style="font-size:11px; font-weight:700; color:var(--text-muted);">FOLDER NAME</label>
+                <input type="text" id="new-folder-name" placeholder="e.g. Discovery_Incoming">
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px">
+                    <button class="btn" onclick="closeModal('folder-modal')">Cancel</button>
+                    <button class="btn btn-brand" onclick="createFolder()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RENAME MODAL -->
+    <div id="rename-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h3>Rename Item</h3>
+            <div style="margin-top:15px">
+                <label style="font-size:11px; font-weight:700; color:var(--text-muted);">NEW NAME</label>
+                <input type="text" id="rename-input" placeholder="Enter new name...">
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px">
+                    <button class="btn" onclick="closeModal('rename-modal')">Cancel</button>
+                    <button class="btn btn-brand" onclick="saveRename()">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SHARED DATA ENGINE ---
+        const DB_KEY = 'LWAZI_OS_DATA';
+        const blobCache = new Map();
+
+        let state = JSON.parse(localStorage.getItem(DB_KEY)) || {
+            matters: [],
+            selectedMatterId: null,
+            currentPath: [],
+            selectedItemId: null
+        };
+
+        function sync() {
+            localStorage.setItem(DB_KEY, JSON.stringify(state));
+            render();
+        }
+
+        const openModal = (id) => document.getElementById(id).style.display = 'flex';
+        const closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+        function selectMatter(id) {
+            state.selectedMatterId = id;
+            state.currentPath = [];
+            state.selectedItemId = null;
+            document.querySelectorAll('.matter-btn').forEach(b => b.disabled = false);
+            sync();
+        }
+
+        function navigateTo(folderName) {
+            state.currentPath.push(folderName);
+            state.selectedItemId = null;
+            sync();
+        }
+
+        function goBack() {
+            state.currentPath.pop();
+            state.selectedItemId = null;
+            sync();
+        }
+
+        function navigateToPath(index) {
+            if(index === -1) state.currentPath = [];
+            else state.currentPath = state.currentPath.slice(0, index + 1);
+            state.selectedItemId = null;
+            sync();
+        }
+
+        function getFileIcon(name, type) {
+            if (type === 'folder') return { icon: 'ph-folder-fill', color: 'var(--amber)' };
+            const ext = name.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) return { icon: 'ph-file-pdf', color: 'var(--rose)' };
+            if (['jpg','jpeg','png','gif'].includes(ext)) return { icon: 'ph-image', color: 'var(--emerald)' };
+            if (['xls', 'xlsx'].includes(ext)) return { icon: 'ph-file-xls', color: 'var(--emerald)' };
+            return { icon: 'ph-file', color: 'var(--text-muted)' };
+        }
+
+        function createFolder() {
+            const name = document.getElementById('new-folder-name').value.trim();
+            if (!name) return;
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            if(!m.files) m.files = [];
+            m.files.push({
+                id: 'FLD-' + Date.now(),
+                type: 'folder',
+                name: name,
+                path: state.currentPath.join('/'),
+                date: new Date().toLocaleDateString(),
+                size: '--',
+                important: false
+            });
+            closeModal('folder-modal');
+            document.getElementById('new-folder-name').value = "";
+            sync();
+        }
+
+        function openRenameModal() {
+            const activeMatter = state.matters.find(x => x.id === state.selectedMatterId);
+            const item = activeMatter.files.find(f => f.id === state.selectedItemId);
+            if (!item) return;
+            document.getElementById('rename-input').value = item.name;
+            openModal('rename-modal');
+        }
+
+        function saveRename() {
+            const newName = document.getElementById('rename-input').value.trim();
+            if (!newName) return;
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            const item = m.files.find(f => f.id === state.selectedItemId);
+            if (item.type === 'folder') {
+                const oldPathSegment = (item.path ? item.path + '/' : '') + item.name;
+                const newPathSegment = (item.path ? item.path + '/' : '') + newName;
+                m.files.forEach(f => {
+                    if (f.path === oldPathSegment) f.path = newPathSegment;
+                    else if (f.path.startsWith(oldPathSegment + '/')) f.path = newPathSegment + f.path.substring(oldPathSegment.length);
+                });
+            }
+            item.name = newName;
+            closeModal('rename-modal');
+            sync();
+        }
+
+        function toggleImportance(id) {
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            const item = m.files.find(f => f.id === id);
+            if (item) { item.important = !item.important; sync(); }
+        }
+
+        function handleDropbox() {
+            Dropbox.choose({
+                success: function(files) {
+                    files.forEach(file => ingestFile(file.name, file.link, 'Dropbox Cloud', file.bytes));
+                },
+                linkType: "preview", multiselect: true,
+            });
+        }
+
+        function handleGoogleDrive() {
+            const simulatedFileName = prompt("Enter Google Drive File Name (Simulation):", "Cloud_Evidence_001.pdf");
+            if (simulatedFileName) ingestFile(simulatedFileName, "#", "Google Drive", 1024 * 500);
+        }
+
+        function ingestFile(name, url, source, sizeBytes) {
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            if(!m.files) m.files = [];
+            const id = 'FIL-' + Date.now() + Math.random();
+            if (url !== "#") blobCache.set(id, url);
+            
+            m.files.push({
+                id: id,
+                type: 'file',
+                name: name,
+                bates: `${m.prefix}-${Math.floor(Math.random() * 90000 + 10000)}`,
+                path: state.currentPath.join('/'),
+                date: new Date().toLocaleDateString(),
+                size: (sizeBytes / 1024).toFixed(2) + ' KB',
+                source: source,
+                hash: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(),
+                important: false
+            });
+            sync();
+        }
+
+        function handleFileSelect(e) { processFiles(e.target.files); }
+        function processFiles(files) {
+            if (!state.selectedMatterId) return;
+            Array.from(files).forEach(file => ingestFile(file.name, URL.createObjectURL(file), 'Local Upload', file.size));
+        }
+
+        function openPreview(id) {
+            const activeMatter = state.matters.find(x => x.id === state.selectedMatterId);
+            const file = activeMatter.files.find(f => f.id === id);
+            const url = blobCache.get(id);
+            const frame = document.getElementById('preview-frame');
+            document.getElementById('preview-title').innerText = `Previewing: ${file.name} (${file.bates})`;
+            frame.innerHTML = '';
+            if (!url) {
+                frame.innerHTML = `<div style="text-align:center"><i class="ph ph-cloud" style="font-size:48px"></i><p>Viewing Cloud Reference Link:</p><a href="${file.url || '#'}" target="_blank">Open in Provider</a></div>`;
+            } else {
+                frame.innerHTML = `<iframe src="${url}" width="100%" height="100%" style="border:none;"></iframe>`;
+            }
+            document.getElementById('preview-overlay').style.display = 'flex';
+        }
+
+        function closePreview() { document.getElementById('preview-overlay').style.display = 'none'; }
+
+        // Drag and Drop
+        const scrollArea = document.getElementById('explorer-scroll');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => scrollArea.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+        scrollArea.addEventListener('dragenter', () => scrollArea.classList.add('drag-over'));
+        scrollArea.addEventListener('dragleave', () => scrollArea.classList.remove('drag-over'));
+        scrollArea.addEventListener('drop', e => { scrollArea.classList.remove('drag-over'); processFiles(e.dataTransfer.files); });
+
+        function deleteItem(id) {
+            const m = state.matters.find(x => x.id === state.selectedMatterId);
+            m.files = m.files.filter(f => f.id !== id);
+            state.selectedItemId = null;
+            sync();
+        }
+
+        function render() {
+            const matterList = document.getElementById('matter-list');
+            matterList.innerHTML = state.matters.map(m => `
+                <div class="matter-item ${state.selectedMatterId === m.id ? 'active' : ''}" onclick="selectMatter('${m.id}')">
+                    <span class="caption">${m.name}</span>
+                    <span class="sub">${m.id} • Prefix: ${m.prefix}</span>
+                </div>
+            `).join('');
+
+            const activeMatter = state.matters.find(x => x.id === state.selectedMatterId);
+            const explorerBody = document.getElementById('explorer-body');
+            const inspector = document.getElementById('inspector-pane');
+            const breadcrumb = document.getElementById('breadcrumb');
+
+            if (!activeMatter) {
+                explorerBody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="ph ph-folder-lock"></i><p>Select a matter from the sidebar</p></div></td></tr>';
+                return;
+            }
+
+            document.getElementById('back-btn').disabled = state.currentPath.length === 0;
+            breadcrumb.innerHTML = `<span onclick="navigateToPath(-1)">${activeMatter.prefix} Vault</span>` + 
+                state.currentPath.map((p, i) => ` <i class="ph ph-caret-right"></i> <span onclick="navigateToPath(${i})">${p}</span>`).join('');
+
+            const currentPathStr = state.currentPath.join('/');
+            const searchTerm = document.getElementById('vault-search').value.toLowerCase();
+            const filesInDir = (activeMatter.files || []).filter(f => {
+                const matchesPath = f.path === currentPathStr;
+                const matchesSearch = f.name.toLowerCase().includes(searchTerm);
+                return matchesPath && matchesSearch;
+            });
+
+            document.getElementById('item-count').innerText = `${filesInDir.length} Items`;
+
+            if (filesInDir.length === 0) {
+                explorerBody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="ph ph-upload"></i><p>Drop real files or import from cloud</p></div></td></tr>`;
+            } else {
+                explorerBody.innerHTML = filesInDir.map(f => {
+                    const iconStyle = getFileIcon(f.name, f.type);
+                    return `
+                    <tr class="${state.selectedItemId === f.id ? 'selected-row' : ''}" onclick="state.selectedItemId = '${f.id}'; render();" ondblclick="${f.type === 'folder' ? `navigateTo('${f.name}')` : ''}">
+                        <td>
+                            ${f.important ? '<i class="ph-fill ph-star star-important"></i>' : ''}
+                            <i class="ph ${iconStyle.icon}" style="margin-right:10px; font-size:18px; color:${iconStyle.color}"></i>
+                            ${f.name}
+                        </td>
+                        <td><code>${f.bates || 'DIR'}</code></td>
+                        <td>${f.date}</td>
+                        <td style="text-align:right">${f.size}</td>
+                    </tr>`}).join('');
+            }
+
+            const selectedItem = (activeMatter.files || []).find(x => x.id === state.selectedItemId);
+            if (selectedItem) {
+                const iconStyle = getFileIcon(selectedItem.name, selectedItem.type);
+                inspector.innerHTML = `
+                    <div style="text-align:center; padding-bottom:10px;"><i class="ph ${iconStyle.icon}" style="font-size:64px; color:${iconStyle.color}"></i><h3 style="font-size:14px; margin-top:10px;">${selectedItem.name}</h3></div>
+                    <h4>Properties</h4>
+                    <div class="meta-box">
+                        <div class="meta-label">Bates Number</div><div class="meta-value">${selectedItem.bates || 'Directory Node'}</div>
+                        <div class="meta-label">SHA-256 Checksum</div><div class="meta-value" style="font-family:'JetBrains Mono'; font-size:10px;">${selectedItem.hash || '---'}</div>
+                        <div class="meta-label">Collection Source</div><div class="meta-value">${selectedItem.source || 'N/A'}</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:auto;">
+                        <button class="btn" style="justify-content:center;" onclick="toggleImportance('${selectedItem.id}')">
+                            <i class="ph ${selectedItem.important ? 'ph-star-slash' : 'ph-star'}" style="color:${selectedItem.important ? 'var(--text-muted)' : 'var(--amber)'}"></i> 
+                            ${selectedItem.important ? 'Remove Importance' : 'Mark as Important'}
+                        </button>
+                        ${selectedItem.type === 'file' ? `<button class="btn btn-brand" style="justify-content:center;" onclick="openPreview('${selectedItem.id}')"><i class="ph ph-eye"></i> View Artifact</button>` : ''}
+                        <button class="btn" style="justify-content:center;" onclick="openRenameModal()"><i class="ph ph-pencil-simple"></i> Rename</button>
+                        <button class="btn btn-danger" style="justify-content:center;" onclick="deleteItem('${selectedItem.id}')"><i class="ph ph-trash"></i> Delete</button>
+                    </div>`;
+            } else {
+                inspector.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); text-align:center;"><i class="ph ph-info" style="font-size:32px; margin-bottom:10px;"></i><p style="font-size:12px;">Select an item to view properties</p></div>`;
+            }
+        }
+        window.onload = sync;
+    </script>
+</body>
+</html>
