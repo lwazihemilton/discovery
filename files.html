@@ -3,462 +3,821 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lwazi OS | Evidence Vault Explorer</title>
+    <title>Lwazi OS | Intelligence Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Cloud SDKs -->
-    <script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="YOUR_DROPBOX_APP_KEY"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-
     <style>
         :root {
             --primary: #2563eb;
             --top-bg: #0f172a;
-            --bg-canvas: #f8fafc;
+            --bg-canvas: #f1f5f9;
             --border: #e2e8f0;
             --text-main: #1e293b;
             --text-muted: #64748b;
-            --emerald: #10b981;
+            --selection: #dbeafe;
+            --selection-border: #3b82f6;
             --rose: #f43f5e;
             --amber: #f59e0b;
-            --indigo: #6366f1;
+            --emerald: #10b981;
+            --hold-color: #7c3aed; 
+            
+            /* Status Colors */
+            --status-awaiting: #94a3b8;
+            --status-progress: #f59e0b;
+            --status-complete: #10b981;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-canvas); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-canvas); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
 
-        /* --- UI TIERS --- */
-        .tier-1 { background: var(--top-bg); color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-        .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; }
-        .logo span { color: var(--primary); font-size: 0.8rem; letter-spacing: 1px; }
+        /* --- LAYOUT --- */
+        header { background: var(--top-bg); color: white; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; border-bottom: 1px solid #1e293b; }
+        .logo { font-weight: 800; display: flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: 1px; }
+        .logo span { color: var(--primary); }
 
-        .tier-2 { background: white; border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-        .nav-links { display: flex; gap: 24px; height: 100%; }
-        .nav-link { height: 100%; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; transition: 0.2s; }
-        .nav-link.active { color: var(--primary); border-bottom-color: var(--primary); }
-
-        .tier-3 { background: white; border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-        .control-group { display: flex; align-items: center; gap: 10px; }
-
-        /* --- EXPLORER LAYOUT --- */
-        main { flex: 1; overflow: hidden; display: grid; grid-template-columns: 280px 1fr 340px; }
-
-        .sidebar { border-right: 1px solid var(--border); background: white; display: flex; flex-direction: column; overflow-y: auto; }
-        .sidebar-header { padding: 20px; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-        .matter-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; transition: 0.2s; border-bottom: 1px solid #f1f5f9; }
-        .matter-item:hover { background: #f8fafc; }
-        .matter-item.active { background: #eff6ff; border-left-color: var(--primary); }
-        .matter-item .caption { font-size: 13px; font-weight: 700; display: block; }
-        .matter-item .sub { font-size: 11px; color: var(--text-muted); }
-
-        .explorer-view { background: white; display: flex; flex-direction: column; position: relative; }
-        .explorer-toolbar { height: 50px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
-        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-        .breadcrumb span { cursor: pointer; color: var(--text-muted); }
-        .breadcrumb span:hover { color: var(--primary); }
-        .breadcrumb span:last-child { color: var(--text-main); cursor: default; }
-
-        .scroll-area { flex: 1; overflow-y: auto; transition: background 0.2s; }
-        .scroll-area.drag-over { background: #eff6ff; outline: 2px dashed var(--primary); outline-offset: -10px; }
+        nav.toolbar { background: white; border-bottom: 1px solid var(--border); height: 55px; display: flex; align-items: center; padding: 0 20px; gap: 8px; flex-shrink: 0; }
         
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #f8fafc; padding: 12px 20px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
-        td { padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
-        tr:hover td { background: #f8fafc; }
-        tr.selected-row td { background: #f0f7ff; }
+        main { flex: 1; display: grid; grid-template-columns: 260px 1fr 320px; overflow: hidden; }
 
-        .inspector { border-left: 1px solid var(--border); background: #f8fafc; padding: 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        .inspector h4 { font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
-        .meta-box { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-        .meta-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
-        .meta-value { font-size: 12px; font-weight: 600; word-break: break-all; margin-bottom: 12px; color: var(--text-main); }
+        /* --- SIDEBAR --- */
+        .sidebar { background: white; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .sidebar-item { padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-muted); transition: 0.2s; }
+        .sidebar-item:hover { background: #f8fafc; color: var(--primary); }
+        .sidebar-item.active { background: var(--selection); color: var(--primary); border-right: 3px solid var(--primary); }
 
-        .btn { padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: white; transition: 0.2s; }
-        .btn:hover { border-color: var(--primary); color: var(--primary); }
+        /* --- EXPLORER --- */
+        .explorer-container { background: white; display: flex; flex-direction: column; position: relative; }
+        .breadcrumb-bar { height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; font-size: 12px; background: #fafafa; }
+        .breadcrumb-item { color: var(--text-muted); cursor: pointer; font-weight: 500; }
+        .breadcrumb-item:hover { color: var(--primary); text-decoration: underline; }
+        
+        .scroll-area { flex: 1; overflow-y: auto; position: relative; }
+        
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { position: sticky; top: 0; background: #f8fafc; border-bottom: 1px solid var(--border); padding: 10px 15px; text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-muted); cursor: pointer; z-index: 10; }
+        th:hover { background: #f1f5f9; color: var(--text-main); }
+        td { padding: 10px 15px; font-size: 13px; border-bottom: 1px solid #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        tr.selected { background: var(--selection) !important; }
+        tr.drop-target, .grid-item.drop-target { background: #fef3c7 !important; outline: 2px dashed var(--amber) !important; }
+        .scroll-area.drag-over { background-color: #f0f7ff; }
+
+        tr:hover:not(.selected) { background: #f8fafc; }
+
+        .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; padding: 20px; }
+        .grid-item { display: flex; flex-direction: column; align-items: center; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid transparent; cursor: default; position: relative; }
+        .grid-item i { font-size: 44px; margin-bottom: 10px; }
+        .grid-item span { font-size: 12px; font-weight: 500; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .grid-item.selected { background: var(--selection); border-color: var(--selection-border); }
+        
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .grid-item .status-dot { position: absolute; top: 10px; right: 10px; width: 10px; height: 10px; }
+
+        /* --- INSPECTOR & PREVIEW --- */
+        .inspector { background: #f8fafc; border-left: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+        .inspector-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
+        .meta-group { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; position: relative; }
+        .meta-label { font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+        .meta-value { font-size: 12px; font-weight: 600; color: var(--text-main); word-break: break-all; font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+        .status-select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-size: 12px; font-weight: 600; background: white; cursor: pointer; }
+
+        .preview-pane { 
+            width: 100%; 
+            height: 180px; 
+            background: #e2e8f0; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .preview-pane i { font-size: 80px; color: #94a3b8; }
+        .preview-overlay { 
+            position: absolute; 
+            bottom: 0; left: 0; right: 0; 
+            background: rgba(15, 23, 42, 0.8); 
+            color: white; 
+            padding: 8px 12px; 
+            font-size: 10px; 
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .copy-trigger { position: absolute; top: 10px; right: 10px; cursor: pointer; color: var(--primary); opacity: 0.5; transition: 0.2s; }
+        .copy-trigger:hover { opacity: 1; }
+
+        /* --- BUTTONS & MODALS --- */
+        .btn { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.1s; color: var(--text-main); text-decoration: none; }
+        .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-brand { background: var(--primary); color: white; border-color: var(--primary); }
-        .btn-brand:hover { background: #1d4ed8; color: white; }
-        .btn-danger { color: var(--rose); }
-        .btn-danger:hover { background: #fff1f2; border-color: var(--rose); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: var(--border) !important; color: var(--text-muted) !important; }
+        .btn-brand:hover:not(:disabled) { background: #1d4ed8; color: white; }
 
-        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
-        .modal-card { background: white; width: 400px; border-radius: 12px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-top: 5px; font-family: inherit; font-size: 13px; }
+        .search-input { padding: 8px 12px 8px 35px; border: 1px solid var(--border); border-radius: 6px; width: 220px; font-size: 13px; }
+
+        #ctx-menu { position: fixed; background: white; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px; padding: 5px; z-index: 9999; display: none; min-width: 200px; }
+        .ctx-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-radius: 4px; }
+        .ctx-item:hover { background: var(--primary); color: white; }
+        .ctx-item.danger:hover { background: var(--rose); }
+        .ctx-item.hold-item:hover { background: var(--hold-color); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(2px); }
+        .modal { background: white; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .modal h3 { margin-bottom: 15px; font-size: 18px; color: var(--top-bg); }
+        .modal input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+
+        #hex-dump { font-family: 'JetBrains Mono', monospace; font-size: 10px; background: #0f172a; color: #4ade80; padding: 12px; border-radius: 4px; line-height: 1.5; white-space: pre-wrap; overflow-x: hidden; }
         
-        #preview-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 4000; display: none; flex-direction: column; padding: 40px; }
-        .preview-content { background: white; flex: 1; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
-        .preview-header { display: flex; justify-content: space-between; color: white; margin-bottom: 15px; }
+        .status-bar { height: 28px; background: #f8fafc; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+        
+        .hold-badge { color: var(--hold-color); margin-left: 5px; font-size: 14px; vertical-align: middle; }
 
-        .empty-state { padding: 60px; text-align: center; color: var(--text-muted); }
-        .empty-state i { font-size: 48px; margin-bottom: 15px; opacity: 0.3; }
+        /* --- MOBILE VIEW ADDITIONS --- */
+        @media (max-width: 900px) {
+            body { overflow-y: auto; height: auto; min-height: 100vh; }
+            header { padding: 0 10px; }
+            .logo span { display: none; }
+            #session-tag { font-size: 9px; }
 
-        .star-important { color: var(--amber); margin-right: 8px; }
+            nav.toolbar { 
+                height: auto; 
+                padding: 10px; 
+                flex-wrap: nowrap; 
+                overflow-x: auto; 
+                -webkit-overflow-scrolling: touch;
+                gap: 10px;
+            }
+            nav.toolbar::-webkit-scrollbar { display: none; }
+            .toolbar .btn { flex-shrink: 0; }
+            .search-input { width: 140px; }
+
+            main { 
+                display: flex; 
+                flex-direction: column; 
+                overflow: visible; 
+                height: auto;
+            }
+
+            .sidebar { 
+                order: 2; 
+                border-right: none; 
+                border-top: 1px solid var(--border); 
+                max-height: 300px; 
+                overflow-y: auto; 
+            }
+
+            .explorer-container { 
+                order: 1; 
+                height: 500px; 
+                border-bottom: 1px solid var(--border); 
+            }
+
+            .inspector { 
+                order: 3; 
+                border-left: none; 
+                border-top: 1px solid var(--border); 
+                height: auto; 
+                padding: 15px;
+            }
+
+            .scroll-area { overflow-x: auto; }
+            table { min-width: 600px; } /* Ensure table remains readable */
+            
+            .modal { width: 95%; margin: 10px; }
+            
+            .status-bar { 
+                position: sticky; 
+                bottom: 0; 
+                z-index: 100;
+                background: white;
+            }
+        }
     </style>
 </head>
-<body>
+<body onclick="hideContextMenus()" onkeydown="handleGlobalKeys(event)">
 
-    <!-- TIER 1 -->
-    <header class="tier-1">
-        <div class="logo"><i class="ph-fill ph-database"></i> LWAZI <span>VAULT</span></div>
-        <div style="display:flex; gap:20px; align-items:center;">
-            <div style="text-align:right"><div style="font-size:12px; font-weight:700">Forensic Admin</div><div style="font-size:10px; color:#94a3b8">Secure Node: Vault_01</div></div>
-            <div style="width: 32px; height: 32px; background: var(--indigo); border-radius: 8px; display:flex; align-items:center; justify-content:center; font-weight:800; color:white;">FA</div>
-        </div>
+    <header>
+        <div class="logo"><i class="ph-fill ph-shield-check"></i> LWAZI <span>Intelligence OS</span></div>
+        <div id="session-tag" style="font-size: 11px; opacity: 0.7; font-family: 'JetBrains Mono'; color: #4ade80;">NODE_882: READY</div>
     </header>
 
-    <!-- TIER 2: SHARED NAVIGATION -->
-    <nav class="tier-2">
-        <div class="nav-links">
-            <a href="index.html" class="nav-link"><i class="ph ph-chart-line"></i> Dashboard</a>
-            <a href="matters.html" class="nav-link"><i class="ph ph-briefcase"></i> Operations Hub</a>
-            <a href="files.html" class="nav-link active"><i class="ph ph-folder-open"></i> Evidence Vault</a>
+    <nav class="toolbar">
+        <a href="index.html" class="btn"><i class="ph ph-chart-line"></i> Dashboard</a>
+        <a href="matters.html" class="btn"><i class="ph ph-briefcase"></i> Case Management</a>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 10px"></div>
+
+        <button class="btn" id="btn-back" onclick="navigateBack()" disabled><i class="ph ph-arrow-left"></i></button>
+        
+        <button class="btn" onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)"><i class="ph ph-arrow-u-up-left"></i></button>
+        <button class="btn" onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Y)"><i class="ph ph-arrow-u-up-right"></i></button>
+        
+        <div style="width:1px; height:20px; background:var(--border); margin:0 5px"></div>
+        
+        <button class="btn btn-brand action-btn" disabled onclick="triggerUpload()"><i class="ph ph-file-arrow-up"></i> Upload</button>
+		<button class="btn action-btn" disabled onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> New Folder</button>
+        
+        <button class="btn action-btn" disabled onclick="exportManifest()"><i class="ph ph-file-csv"></i> Create Report</button>
+        
+        <div style="width:1px; height:20px; background:var(--border); margin:0 5px"></div>
+        
+        <button class="btn" onclick="copySelection('copy')" id="copy-btn" disabled><i class="ph ph-copy"></i> Copy</button>
+        <button class="btn" onclick="pasteItem()" id="paste-btn" disabled><i class="ph ph-clipboard-text"></i> Paste</button>
+        <button class="btn" onclick="deleteSelection()" id="delete-btn" disabled><i class="ph ph-trash" style="color:var(--rose)"></i></button>
+
+        <div style="flex:1"></div>
+        
+        <div style="position:relative">
+            <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:10px; color:var(--text-muted)"></i>
+            <input type="text" class="search-input" id="search-bar" placeholder="Filter..." oninput="render()">
+        </div>
+        
+        <div style="display:flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 10px;">
+            <button class="btn" onclick="setView('list')" style="border:none; border-radius:0"><i class="ph ph-list"></i></button>
+            <button class="btn" onclick="setView('grid')" style="border:none; border-radius:0"><i class="ph ph-squares-four"></i></button>
         </div>
     </nav>
 
-    <!-- TIER 3 -->
-    <section class="tier-3">
-        <div class="control-group">
-            <button class="btn" onclick="goBack()" id="back-btn" disabled><i class="ph ph-arrow-left"></i> Parent</button>
-            <div style="width: 1px; height: 20px; background: var(--border); margin: 0 10px;"></div>
-            <button class="btn matter-btn" disabled onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> New Folder</button>
-            <button class="btn btn-brand matter-btn" disabled onclick="document.getElementById('real-file-input').click()"><i class="ph ph-file-arrow-up"></i> Local Artifact</button>
-            <button class="btn matter-btn" disabled onclick="handleGoogleDrive()"><i class="ph ph-google-logo"></i> Drive</button>
-            <button class="btn matter-btn" disabled onclick="handleDropbox()"><i class="ph ph-dropbox-logo"></i> Dropbox</button>
-            <input type="file" id="real-file-input" style="display:none" multiple onchange="handleFileSelect(event)">
-        </div>
-        <div class="control-group">
-            <div style="position:relative">
-                <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:10px; color:var(--text-muted)"></i>
-                <input type="text" id="vault-search" placeholder="Search current directory..." style="width: 280px; margin: 0; padding: 8px 12px 8px 35px;" oninput="render()">
-            </div>
-        </div>
-    </section>
-
     <main>
         <aside class="sidebar">
-            <div class="sidebar-header">Matters</div>
+            <div style="padding: 20px 20px 10px 20px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Investigations</div>
             <div id="matter-list"></div>
         </aside>
 
-        <section class="explorer-view">
-            <div class="explorer-toolbar">
-                <div class="breadcrumb" id="breadcrumb"><span>Vault</span></div>
-                <div id="item-count" style="font-size: 11px; color: var(--text-muted); font-weight: 700;">0 Items</div>
-            </div>
-            <div class="scroll-area" id="explorer-scroll">
-                <table>
+        <section class="explorer-container">
+            <div class="breadcrumb-bar" id="breadcrumb">Vault /</div>
+            
+            <div class="scroll-area" id="explorer-scroll" 
+                 oncontextmenu="handleCanvasContext(event)"
+                 ondragover="handleCanvasDragOver(event)"
+                 ondragleave="handleCanvasDragLeave(event)"
+                 ondrop="handleCanvasDrop(event)">
+                
+                <table id="explorer-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Bates / ID</th>
-                            <th>Date Modified</th>
-                            <th style="text-align:right">Size</th>
+                            <th onclick="setSort('name')" style="width: 40%">Artifact Name <i class="ph ph-caret-up-down"></i></th>
+                            <th onclick="setSort('status')" style="width: 15%">Status</th>
+                            <th onclick="setSort('date')">Date</th>
+                            <th onclick="setSort('size')">Size</th>
+                            <th onclick="setSort('type')">Kind</th>
                         </tr>
                     </thead>
                     <tbody id="explorer-body"></tbody>
                 </table>
+                <div id="grid-container" class="grid-view" style="display:none"></div>
+            </div>
+
+            <div class="status-bar">
+                <div id="stat-count">0 Artifacts</div>
+                <div style="margin-left: auto; display: flex; gap: 20px;">
+                    <span class="mobile-hide">MODE: SECURE_INGEST</span>
+                </div>
             </div>
         </section>
 
-        <aside class="inspector" id="inspector-pane"></aside>
+        <aside class="inspector" id="inspector">
+            <div class="inspector-title">Metadata Inspector</div>
+            <div id="inspector-content">
+                <p style="font-size:12px; color:var(--text-muted)">Select evidence for forensic audit.</p>
+            </div>
+            
+            <div id="hex-section" style="display:none; margin-top: 25px;">
+                <div class="inspector-title">Deep Inspection <span>HEX HEADER</span></div>
+                <div id="hex-dump"></div>
+            </div>
+        </aside>
     </main>
 
-    <!-- PREVIEW OVERLAY -->
-    <div id="preview-overlay">
-        <div class="preview-header">
-            <h3 id="preview-title">Forensic View</h3>
-            <button class="btn" onclick="closePreview()">Close Escape</button>
-        </div>
-        <div class="preview-content" id="preview-frame"></div>
-    </div>
+    <div id="ctx-menu"></div>
 
-    <!-- FOLDER MODAL -->
-    <div id="folder-modal" class="modal-overlay">
-        <div class="modal-card">
-            <h3>Create Directory</h3>
-            <div style="margin-top:15px">
-                <label style="font-size:11px; font-weight:700; color:var(--text-muted);">FOLDER NAME</label>
-                <input type="text" id="new-folder-name" placeholder="e.g. Discovery_Incoming">
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px">
-                    <button class="btn" onclick="closeModal('folder-modal')">Cancel</button>
-                    <button class="btn btn-brand" onclick="createFolder()">Create</button>
-                </div>
+    <div id="folder-modal" class="modal-overlay" onclick="closeModal('folder-modal')">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3>Create Folder</h3>
+            <input type="text" id="folder-name-input" placeholder="Evidence folder name..." onkeydown="if(event.key==='Enter') createFolder()">
+            <div style="display:flex; justify-content:flex-end; gap:10px">
+                <button class="btn" onclick="closeModal('folder-modal')">Cancel</button>
+                <button class="btn btn-brand" onclick="createFolder()">Create</button>
             </div>
         </div>
     </div>
 
-    <!-- RENAME MODAL -->
-    <div id="rename-modal" class="modal-overlay">
-        <div class="modal-card">
-            <h3>Rename Item</h3>
-            <div style="margin-top:15px">
-                <label style="font-size:11px; font-weight:700; color:var(--text-muted);">NEW NAME</label>
-                <input type="text" id="rename-input" placeholder="Enter new name...">
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px">
-                    <button class="btn" onclick="closeModal('rename-modal')">Cancel</button>
-                    <button class="btn btn-brand" onclick="saveRename()">Update</button>
-                </div>
+    <div id="rename-modal" class="modal-overlay" onclick="closeModal('rename-modal')">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3>Rename Artifact</h3>
+            <input type="text" id="rename-input" placeholder="New artifact name...">
+            <div style="display:flex; justify-content:flex-end; gap:10px">
+                <button class="btn" onclick="closeModal('rename-modal')">Cancel</button>
+                <button class="btn btn-brand" onclick="applyRename()">Apply Change</button>
             </div>
         </div>
     </div>
+
+    <!-- PREVIEW MODAL -->
+    <div id="preview-modal" class="modal-overlay" onclick="closeModal('preview-modal')">
+        <div class="modal" style="width: 90%; max-width: 1100px; height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 id="preview-title">Document Preview</h3>
+                <button class="btn" onclick="closeModal('preview-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="preview-body" style="flex:1; background:#f1f5f9; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                <!-- Content injected here -->
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="hidden-file-input" style="display:none" multiple onchange="handleFileUpload(event)">
 
     <script>
-        // --- SHARED DATA ENGINE ---
-        const DB_KEY = 'LWAZI_OS_DATA';
-        const blobCache = new Map();
+        // --- DATA LAYER ---
+        const DB_KEY = 'LWAZI_PRO_SYSTEM_SHARED';
+        let state = JSON.parse(localStorage.getItem(DB_KEY)) || { matters: [], selectedMatterId: null };
+        
+        if(!state.path) state.path = [];
+        if(!state.selectedIds) state.selectedIds = [];
+        if(!state.viewMode) state.viewMode = 'list';
+        if(!state.sort) state.sort = { key: 'name', asc: true };
 
-        let state = JSON.parse(localStorage.getItem(DB_KEY)) || {
-            matters: [],
-            selectedMatterId: null,
-            currentPath: [],
-            selectedItemId: null
-        };
+        let undoStack = [];
+        let redoStack = [];
+        let draggedItems = [];
 
-        function sync() {
+        function pushHistory() {
+            undoStack.push(JSON.stringify(state.matters));
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];
+        }
+
+        function save() {
             localStorage.setItem(DB_KEY, JSON.stringify(state));
             render();
         }
 
-        const openModal = (id) => document.getElementById(id).style.display = 'flex';
-        const closeModal = (id) => document.getElementById(id).style.display = 'none';
+        function getActiveMatter() { return state.matters.find(m => m.id === state.selectedMatterId); }
 
-        function selectMatter(id) {
-            state.selectedMatterId = id;
-            state.currentPath = [];
-            state.selectedItemId = null;
-            document.querySelectorAll('.matter-btn').forEach(b => b.disabled = false);
-            sync();
+        function getCurrentDir() {
+            const matter = getActiveMatter();
+            if (!matter) return [];
+            if(!matter.files) matter.files = [];
+            let current = matter.files;
+            for (const id of state.path) {
+                const folder = current.find(f => f.id === id);
+                if (folder) current = folder.children;
+            }
+            return current;
         }
 
-        function navigateTo(folderName) {
-            state.currentPath.push(folderName);
-            state.selectedItemId = null;
-            sync();
+        // --- UTILS ---
+        async function calculateSHA256(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
         }
 
-        function goBack() {
-            state.currentPath.pop();
-            state.selectedItemId = null;
-            sync();
+        async function generateHexHeader(file) {
+            const blob = file.slice(0, 128);
+            const buffer = await blob.arrayBuffer();
+            const uint8 = new Uint8Array(buffer);
+            let hex = "";
+            for(let i=0; i<uint8.length; i++) {
+                hex += uint8[i].toString(16).padStart(2, '0') + " ";
+                if ((i + 1) % 8 === 0) hex += " ";
+                if ((i + 1) % 16 === 0) hex += "\n";
+            }
+            return hex.trim().toUpperCase();
         }
 
-        function navigateToPath(index) {
-            if(index === -1) state.currentPath = [];
-            else state.currentPath = state.currentPath.slice(0, index + 1);
-            state.selectedItemId = null;
-            sync();
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const tag = document.getElementById('session-tag');
+                const oldText = tag.innerText;
+                tag.innerText = "DATA_COPIED_TO_CLIPBOARD";
+                setTimeout(() => tag.innerText = oldText, 1500);
+            });
         }
 
-        function getFileIcon(name, type) {
-            if (type === 'folder') return { icon: 'ph-folder-fill', color: 'var(--amber)' };
-            const ext = name.split('.').pop().toLowerCase();
-            if (['pdf'].includes(ext)) return { icon: 'ph-file-pdf', color: 'var(--rose)' };
-            if (['jpg','jpeg','png','gif'].includes(ext)) return { icon: 'ph-image', color: 'var(--emerald)' };
-            if (['xls', 'xlsx'].includes(ext)) return { icon: 'ph-file-xls', color: 'var(--emerald)' };
-            return { icon: 'ph-file', color: 'var(--text-muted)' };
+        // --- DRAG & DROP ---
+        function onDragStart(e, id) {
+            if (!state.selectedIds.includes(id)) state.selectedIds = [id];
+            draggedItems = state.selectedIds;
+            e.dataTransfer.setData('text/plain', JSON.stringify(draggedItems));
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function onDragOverItem(e, targetId) {
+            const dir = getCurrentDir();
+            const target = dir.find(i => i.id === targetId);
+            if (target && target.type === 'folder' && !draggedItems.includes(targetId)) {
+                e.preventDefault();
+                e.currentTarget.classList.add('drop-target');
+            }
+        }
+
+        function onDropOnItem(e, targetId) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drop-target');
+            const dir = getCurrentDir();
+            const targetFolder = dir.find(i => i.id === targetId);
+
+            if (targetFolder && targetFolder.type === 'folder') {
+                pushHistory();
+                draggedItems.forEach(id => {
+                    const idx = dir.findIndex(i => i.id === id);
+                    if (idx > -1) {
+                        const item = dir[idx];
+                        if(item.legalHold) return alert(`Movement Blocked: ${item.name} is on Legal Hold.`);
+                        const [removed] = dir.splice(idx, 1);
+                        targetFolder.children.push(removed);
+                    }
+                });
+                state.selectedIds = [];
+                save();
+            }
+        }
+
+        function handleCanvasDragOver(e) { if (!state.selectedMatterId) return; e.preventDefault(); document.getElementById('explorer-scroll').classList.add('drag-over'); }
+        function handleCanvasDragLeave() { document.getElementById('explorer-scroll').classList.remove('drag-over'); }
+        function handleCanvasDrop(e) {
+            e.preventDefault();
+            document.getElementById('explorer-scroll').classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) handleFileUpload({ target: { files: e.dataTransfer.files } });
+        }
+
+        // --- FILE OPS ---
+        async function handleFileUpload(e) {
+            const files = Array.from(e.target.files);
+            const matter = getActiveMatter();
+            if (!files.length || !matter) return;
+            const tag = document.getElementById('session-tag');
+            tag.innerHTML = 'HASHING ARTIFACTS...';
+            tag.style.color = 'var(--amber)';
+            pushHistory();
+            const dir = getCurrentDir();
+            for (const f of files) {
+                const hash = await calculateSHA256(f);
+                const hex = await generateHexHeader(f);
+                const batesNum = (matter.lastBates || 0) + 1;
+                const bates = `${matter.prefix}-${batesNum.toString().padStart(6, '0')}`;
+                
+                // Read content for "As Is" view
+                const content = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(f);
+                });
+
+                matter.lastBates = batesNum;
+                dir.push({
+                    id: 'FIL-' + Date.now() + Math.random().toString(36).substr(2,4),
+                    name: f.name, bates: bates, type: f.type || 'application/octet-stream',
+                    size: (f.size / 1024).toFixed(2) + ' KB', date: new Date().toISOString(),
+                    created: new Date().toISOString(), hash: hash, hex: hex, legalHold: false, status: 'awaiting',
+                    data: content // Store base64 content
+                });
+                if(!matter.audit) matter.audit = [];
+                matter.audit.push({ date: new Date().toLocaleString(), msg: `Vault Ingest: ${f.name} (${bates})` });
+            }
+            tag.innerHTML = 'NODE_882: READY';
+            tag.style.color = '#4ade80';
+            save();
         }
 
         function createFolder() {
-            const name = document.getElementById('new-folder-name').value.trim();
+            const name = document.getElementById('folder-name-input').value;
             if (!name) return;
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            if(!m.files) m.files = [];
-            m.files.push({
-                id: 'FLD-' + Date.now(),
-                type: 'folder',
-                name: name,
-                path: state.currentPath.join('/'),
-                date: new Date().toLocaleDateString(),
-                size: '--',
-                important: false
+            pushHistory();
+            getCurrentDir().push({
+                id: 'FLD-' + Date.now(), name: name, type: 'folder', size: '--',
+                date: new Date().toISOString(), created: new Date().toISOString(),
+                children: [], hash: 'DIRECTORY', legalHold: false, status: 'awaiting'
             });
+            document.getElementById('folder-name-input').value = '';
             closeModal('folder-modal');
-            document.getElementById('new-folder-name').value = "";
-            sync();
+            save();
         }
 
-        function openRenameModal() {
-            const activeMatter = state.matters.find(x => x.id === state.selectedMatterId);
-            const item = activeMatter.files.find(f => f.id === state.selectedItemId);
-            if (!item) return;
-            document.getElementById('rename-input').value = item.name;
-            openModal('rename-modal');
-        }
-
-        function saveRename() {
-            const newName = document.getElementById('rename-input').value.trim();
-            if (!newName) return;
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            const item = m.files.find(f => f.id === state.selectedItemId);
-            if (item.type === 'folder') {
-                const oldPathSegment = (item.path ? item.path + '/' : '') + item.name;
-                const newPathSegment = (item.path ? item.path + '/' : '') + newName;
-                m.files.forEach(f => {
-                    if (f.path === oldPathSegment) f.path = newPathSegment;
-                    else if (f.path.startsWith(oldPathSegment + '/')) f.path = newPathSegment + f.path.substring(oldPathSegment.length);
-                });
-            }
-            item.name = newName;
-            closeModal('rename-modal');
-            sync();
-        }
-
-        function toggleImportance(id) {
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            const item = m.files.find(f => f.id === id);
-            if (item) { item.important = !item.important; sync(); }
-        }
-
-        function handleDropbox() {
-            Dropbox.choose({
-                success: function(files) {
-                    files.forEach(file => ingestFile(file.name, file.link, 'Dropbox Cloud', file.bytes));
-                },
-                linkType: "preview", multiselect: true,
+        function toggleLegalHold() {
+            if (!state.selectedIds.length) return;
+            pushHistory();
+            const dir = getCurrentDir();
+            state.selectedIds.forEach(id => {
+                const item = dir.find(i => i.id === id);
+                if (item) item.legalHold = !item.legalHold;
             });
+            save();
         }
-
-        function handleGoogleDrive() {
-            const simulatedFileName = prompt("Enter Google Drive File Name (Simulation):", "Cloud_Evidence_001.pdf");
-            if (simulatedFileName) ingestFile(simulatedFileName, "#", "Google Drive", 1024 * 500);
-        }
-
-        function ingestFile(name, url, source, sizeBytes) {
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            if(!m.files) m.files = [];
-            const id = 'FIL-' + Date.now() + Math.random();
-            if (url !== "#") blobCache.set(id, url);
-            
-            m.files.push({
-                id: id,
-                type: 'file',
-                name: name,
-                bates: `${m.prefix}-${Math.floor(Math.random() * 90000 + 10000)}`,
-                path: state.currentPath.join('/'),
-                date: new Date().toLocaleDateString(),
-                size: (sizeBytes / 1024).toFixed(2) + ' KB',
-                source: source,
-                hash: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(),
-                important: false
+        
+        function updateStatus(newStatus) {
+            if (!state.selectedIds.length) return;
+            const dir = getCurrentDir();
+            const locked = state.selectedIds.some(id => dir.find(i => i.id === id)?.legalHold);
+            if (locked) return alert("Operation Blocked: Artifacts under Legal Hold cannot be modified.");
+            pushHistory();
+            state.selectedIds.forEach(id => {
+                const item = dir.find(i => i.id === id);
+                if (item) item.status = newStatus;
             });
-            sync();
+            save();
         }
 
-        function handleFileSelect(e) { processFiles(e.target.files); }
-        function processFiles(files) {
-            if (!state.selectedMatterId) return;
-            Array.from(files).forEach(file => ingestFile(file.name, URL.createObjectURL(file), 'Local Upload', file.size));
+        function deleteSelection() {
+            if (!state.selectedIds.length) return;
+            const dir = getCurrentDir();
+            const heldItems = state.selectedIds.filter(id => dir.find(i => i.id === id)?.legalHold);
+            if (heldItems.length > 0) return alert("Operation Blocked: Item is under Legal Hold.");
+            if (!confirm(`Permanently delete ${state.selectedIds.length} artifacts?`)) return;
+            pushHistory();
+            state.selectedIds.forEach(id => {
+                const idx = dir.findIndex(i => i.id === id);
+                if (idx > -1) dir.splice(idx, 1);
+            });
+            state.selectedIds = [];
+            save();
         }
 
-        function openPreview(id) {
-            const activeMatter = state.matters.find(x => x.id === state.selectedMatterId);
-            const file = activeMatter.files.find(f => f.id === id);
-            const url = blobCache.get(id);
-            const frame = document.getElementById('preview-frame');
-            document.getElementById('preview-title').innerText = `Previewing: ${file.name} (${file.bates})`;
-            frame.innerHTML = '';
-            if (!url) {
-                frame.innerHTML = `<div style="text-align:center"><i class="ph ph-cloud" style="font-size:48px"></i><p>Viewing Cloud Reference Link:</p><a href="${file.url || '#'}" target="_blank">Open in Provider</a></div>`;
-            } else {
-                frame.innerHTML = `<iframe src="${url}" width="100%" height="100%" style="border:none;"></iframe>`;
-            }
-            document.getElementById('preview-overlay').style.display = 'flex';
+        // --- NAVIGATION ---
+        function setView(v) { state.viewMode = v; save(); }
+        function setSort(k) { 
+            if (state.sort.key === k) state.sort.asc = !state.sort.asc;
+            else { state.sort.key = k; state.sort.asc = true; }
+            save(); 
         }
+        function selectMatter(id) { state.selectedMatterId = id; state.path = []; state.selectedIds = []; save(); }
+        function navigateInto(id) { state.path.push(id); state.selectedIds = []; save(); }
+        function navigateBack() { state.path.pop(); state.selectedIds = []; save(); }
 
-        function closePreview() { document.getElementById('preview-overlay').style.display = 'none'; }
+        const getStatusLabel = (s) => {
+            if (s === 'progress') return 'In Progress';
+            if (s === 'complete') return 'Complete';
+            return 'Awaiting';
+        };
 
-        // Drag and Drop
-        const scrollArea = document.getElementById('explorer-scroll');
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => scrollArea.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
-        scrollArea.addEventListener('dragenter', () => scrollArea.classList.add('drag-over'));
-        scrollArea.addEventListener('dragleave', () => scrollArea.classList.remove('drag-over'));
-        scrollArea.addEventListener('drop', e => { scrollArea.classList.remove('drag-over'); processFiles(e.dataTransfer.files); });
-
-        function deleteItem(id) {
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            m.files = m.files.filter(f => f.id !== id);
-            state.selectedItemId = null;
-            sync();
-        }
-
+        // --- RENDERING ---
         function render() {
-            const matterList = document.getElementById('matter-list');
-            matterList.innerHTML = state.matters.map(m => `
-                <div class="matter-item ${state.selectedMatterId === m.id ? 'active' : ''}" onclick="selectMatter('${m.id}')">
-                    <span class="caption">${m.name}</span>
-                    <span class="sub">${m.id} • Prefix: ${m.prefix}</span>
+            document.getElementById('matter-list').innerHTML = state.matters.map(m => `
+                <div class="sidebar-item ${state.selectedMatterId === m.id ? 'active' : ''}" onclick="selectMatter('${m.id}')">
+                    <i class="ph-fill ph-briefcase"></i> ${m.name}
                 </div>
             `).join('');
 
-            const activeMatter = state.matters.find(x => x.id === state.selectedMatterId);
-            const explorerBody = document.getElementById('explorer-body');
-            const inspector = document.getElementById('inspector-pane');
-            const breadcrumb = document.getElementById('breadcrumb');
+            const matter = getActiveMatter();
+            document.querySelectorAll('.action-btn').forEach(b => b.disabled = !matter);
+            document.getElementById('undo-btn').disabled = undoStack.length === 0;
+            document.getElementById('redo-btn').disabled = redoStack.length === 0;
+            document.getElementById('copy-btn').disabled = state.selectedIds.length === 0;
+            document.getElementById('delete-btn').disabled = state.selectedIds.length === 0;
+            document.getElementById('paste-btn').disabled = !state.clipboard;
+            document.getElementById('btn-back').disabled = state.path.length === 0;
 
-            if (!activeMatter) {
-                explorerBody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="ph ph-folder-lock"></i><p>Select a matter from the sidebar</p></div></td></tr>';
+            if (!matter) {
+                document.getElementById('explorer-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:120px;">Select a matter to begin investigation.</td></tr>';
                 return;
             }
 
-            document.getElementById('back-btn').disabled = state.currentPath.length === 0;
-            breadcrumb.innerHTML = `<span onclick="navigateToPath(-1)">${activeMatter.prefix} Vault</span>` + 
-                state.currentPath.map((p, i) => ` <i class="ph ph-caret-right"></i> <span onclick="navigateToPath(${i})">${p}</span>`).join('');
+            let bc = `<span class="breadcrumb-item" onclick="state.path=[];save()">${matter.name}</span>`;
+            let current = matter.files;
+            state.path.forEach((id, idx) => {
+                const f = current.find(i => i.id === id);
+                if(f) { bc += ` / <span class="breadcrumb-item" onclick="state.path=state.path.slice(0,${idx+1});save()">${f.name}</span>`; current = f.children; }
+            });
+            document.getElementById('breadcrumb').innerHTML = bc;
 
-            const currentPathStr = state.currentPath.join('/');
-            const searchTerm = document.getElementById('vault-search').value.toLowerCase();
-            const filesInDir = (activeMatter.files || []).filter(f => {
-                const matchesPath = f.path === currentPathStr;
-                const matchesSearch = f.name.toLowerCase().includes(searchTerm);
-                return matchesPath && matchesSearch;
+            let items = getCurrentDir();
+            const search = document.getElementById('search-bar').value.toLowerCase();
+            if (search) items = items.filter(i => i.name.toLowerCase().includes(search));
+            
+            let displayItems = [...items];
+            displayItems.sort((a,b) => {
+                let vA = a[state.sort.key] || '', vB = b[state.sort.key] || '';
+                if (vA < vB) return state.sort.asc ? -1 : 1;
+                if (vA > vB) return state.sort.asc ? 1 : -1;
+                return 0;
             });
 
-            document.getElementById('item-count').innerText = `${filesInDir.length} Items`;
+            document.getElementById('stat-count').innerText = `${displayItems.length} Artifacts`;
 
-            if (filesInDir.length === 0) {
-                explorerBody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="ph ph-upload"></i><p>Drop real files or import from cloud</p></div></td></tr>`;
+            if (state.viewMode === 'list') {
+                document.getElementById('explorer-table').style.display = 'table';
+                document.getElementById('grid-container').style.display = 'none';
+                renderList(displayItems);
             } else {
-                explorerBody.innerHTML = filesInDir.map(f => {
-                    const iconStyle = getFileIcon(f.name, f.type);
-                    return `
-                    <tr class="${state.selectedItemId === f.id ? 'selected-row' : ''}" onclick="state.selectedItemId = '${f.id}'; render();" ondblclick="${f.type === 'folder' ? `navigateTo('${f.name}')` : ''}">
-                        <td>
-                            ${f.important ? '<i class="ph-fill ph-star star-important"></i>' : ''}
-                            <i class="ph ${iconStyle.icon}" style="margin-right:10px; font-size:18px; color:${iconStyle.color}"></i>
-                            ${f.name}
-                        </td>
-                        <td><code>${f.bates || 'DIR'}</code></td>
-                        <td>${f.date}</td>
-                        <td style="text-align:right">${f.size}</td>
-                    </tr>`}).join('');
+                document.getElementById('explorer-table').style.display = 'none';
+                document.getElementById('grid-container').style.display = 'grid';
+                renderGrid(displayItems);
             }
+            updateInspector();
+        }
 
-            const selectedItem = (activeMatter.files || []).find(x => x.id === state.selectedItemId);
-            if (selectedItem) {
-                const iconStyle = getFileIcon(selectedItem.name, selectedItem.type);
-                inspector.innerHTML = `
-                    <div style="text-align:center; padding-bottom:10px;"><i class="ph ${iconStyle.icon}" style="font-size:64px; color:${iconStyle.color}"></i><h3 style="font-size:14px; margin-top:10px;">${selectedItem.name}</h3></div>
-                    <h4>Properties</h4>
-                    <div class="meta-box">
-                        <div class="meta-label">Bates Number</div><div class="meta-value">${selectedItem.bates || 'Directory Node'}</div>
-                        <div class="meta-label">SHA-256 Checksum</div><div class="meta-value" style="font-family:'JetBrains Mono'; font-size:10px;">${selectedItem.hash || '---'}</div>
-                        <div class="meta-label">Collection Source</div><div class="meta-value">${selectedItem.source || 'N/A'}</div>
+        function renderList(items) {
+            document.getElementById('explorer-body').innerHTML = items.map(i => `
+                <tr class="${state.selectedIds.includes(i.id) ? 'selected' : ''}" 
+                    draggable="true" ondragstart="onDragStart(event, '${i.id}')"
+                    ondragover="onDragOverItem(event, '${i.id}')"
+                    ondragleave="event.currentTarget.classList.remove('drop-target')"
+                    ondrop="onDropOnItem(event, '${i.id}')"
+                    onclick="handleSelect(event, '${i.id}')" 
+                    ondblclick="${i.type === 'folder' ? `navigateInto('${i.id}')` : `openPreview('${i.id}')`}"
+                    oncontextmenu="handleItemContext(event, '${i.id}')">
+                    <td>
+                        <i class="${i.type==='folder'?'ph-fill ph-folder':'ph ph-file-text'}" style="color:${i.type==='folder'?'var(--amber)':'var(--primary)'}; margin-right:8px"></i> 
+                        ${i.name} ${i.legalHold ? '<i class="ph-fill ph-scales hold-badge"></i>' : ''}
+                    </td>
+                    <td>
+                        <span class="status-dot" style="background:var(--status-${i.status || 'awaiting'})"></span>
+                        <span style="font-size:11px; font-weight:600; color:var(--text-muted)">${getStatusLabel(i.status)}</span>
+                    </td>
+                    <td>${new Date(i.date).toLocaleString()}</td>
+                    <td>${i.size}</td>
+                    <td>${i.type === 'folder' ? 'Directory' : i.type.split('/')[1]?.toUpperCase() || 'DATA'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderGrid(items) {
+            document.getElementById('grid-container').innerHTML = items.map(i => `
+                <div class="grid-item ${state.selectedIds.includes(i.id) ? 'selected' : ''}" 
+                     draggable="true" ondragstart="onDragStart(event, '${i.id}')"
+                     ondragover="onDragOverItem(event, '${i.id}')"
+                     ondragleave="event.currentTarget.classList.remove('drop-target')"
+                     ondrop="onDropOnItem(event, '${i.id}')"
+                     onclick="handleSelect(event, '${i.id}')"
+                     ondblclick="${i.type === 'folder' ? `navigateInto('${i.id}')` : `openPreview('${i.id}')`}"
+                     oncontextmenu="handleItemContext(event, '${i.id}')">
+                    <span class="status-dot" style="background:var(--status-${i.status || 'awaiting'})"></span>
+                    <i class="${i.type==='folder'?'ph-fill ph-folder':'ph ph-file-text'}" style="color:${i.type==='folder'?'var(--amber)':'var(--primary)'}"></i>
+                    <span>${i.name} ${i.legalHold ? '<br>⚖️' : ''}</span>
+                </div>
+            `).join('');
+        }
+
+        function updateInspector() {
+            const content = document.getElementById('inspector-content');
+            const hexSect = document.getElementById('hex-section');
+            const items = getCurrentDir().filter(i => state.selectedIds.includes(i.id));
+            const item = items[0];
+
+            if (items.length > 1) {
+                content.innerHTML = `
+                    <div style="text-align:center; padding: 20px;">
+                        <i class="ph ph-files" style="font-size:48px; color:var(--text-muted); opacity:0.5"></i>
+                        <p style="font-size:13px; font-weight:700; margin-top:10px">${items.length} Artifacts Selected</p>
                     </div>
-                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:auto;">
-                        <button class="btn" style="justify-content:center;" onclick="toggleImportance('${selectedItem.id}')">
-                            <i class="ph ${selectedItem.important ? 'ph-star-slash' : 'ph-star'}" style="color:${selectedItem.important ? 'var(--text-muted)' : 'var(--amber)'}"></i> 
-                            ${selectedItem.important ? 'Remove Importance' : 'Mark as Important'}
-                        </button>
-                        ${selectedItem.type === 'file' ? `<button class="btn btn-brand" style="justify-content:center;" onclick="openPreview('${selectedItem.id}')"><i class="ph ph-eye"></i> View Artifact</button>` : ''}
-                        <button class="btn" style="justify-content:center;" onclick="openRenameModal()"><i class="ph ph-pencil-simple"></i> Rename</button>
-                        <button class="btn btn-danger" style="justify-content:center;" onclick="deleteItem('${selectedItem.id}')"><i class="ph ph-trash"></i> Delete</button>
-                    </div>`;
+                    <div class="meta-group">
+                        <div class="meta-label">Batch Update Status</div>
+                        <select class="status-select" onchange="updateStatus(this.value)">
+                            <option value="" disabled selected>Change status for all...</option>
+                            <option value="awaiting">Awaiting Review</option>
+                            <option value="progress">Review in Progress</option>
+                            <option value="complete">Review Complete</option>
+                        </select>
+                    </div>
+                `;
+                hexSect.style.display = 'none';
+            } else if (item) {
+                let previewHtml = '';
+                const type = item.type || '';
+                if (type === 'folder') previewHtml = `<div class="preview-pane"><i class="ph-fill ph-folder" style="color:var(--amber)"></i></div>`;
+                else if (type.startsWith('image/')) previewHtml = `<div class="preview-pane"><img src="${item.data}" style="max-width:100%; max-height:100%; object-fit:contain"></div>`;
+                else if (type.includes('pdf')) previewHtml = `<div class="preview-pane"><i class="ph-fill ph-file-pdf" style="color:var(--rose)"></i></div>`;
+                else previewHtml = `<div class="preview-pane"><i class="ph-fill ph-file-text"></i></div>`;
+
+                content.innerHTML = `
+                    ${previewHtml}
+                    <div class="meta-group">
+                        <div class="meta-label">Review Status</div>
+                        <select class="status-select" onchange="updateStatus(this.value)" ${item.legalHold ? 'disabled' : ''}>
+                            <option value="awaiting" ${item.status === 'awaiting' ? 'selected' : ''}>Awaiting Review</option>
+                            <option value="progress" ${item.status === 'progress' ? 'selected' : ''}>Review in Progress</option>
+                            <option value="complete" ${item.status === 'complete' ? 'selected' : ''}>Review Complete</option>
+                        </select>
+                    </div>
+                    <div class="meta-group"><div class="meta-label">Artifact Name</div><div class="meta-value">${item.name}</div></div>
+                    <div class="meta-group"><div class="meta-label">Legal Hold</div><div class="meta-value" style="color:${item.legalHold ? 'var(--hold-color)' : 'inherit'}">${item.legalHold ? '⚖️ ACTIVE (IMMUTABLE)' : 'INACTIVE'}</div></div>
+                    <div class="meta-group">
+                        <div class="meta-label">SHA-256 Signature</div>
+                        <div class="meta-value mono" style="color:var(--emerald)">${item.hash}</div>
+                        <i class="ph ph-copy copy-trigger" onclick="copyToClipboard('${item.hash}')" title="Copy Hash"></i>
+                    </div>
+                    <div class="meta-group"><div class="meta-label">Bates Identification</div><div class="meta-value mono">${item.bates || 'N/A'}</div></div>
+                `;
+                if (item.hex) { hexSect.style.display = 'block'; document.getElementById('hex-dump').innerText = item.hex; }
+                else { hexSect.style.display = 'none'; }
             } else {
-                inspector.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); text-align:center;"><i class="ph ph-info" style="font-size:32px; margin-bottom:10px;"></i><p style="font-size:12px;">Select an item to view properties</p></div>`;
+                content.innerHTML = '<p style="font-size:12px; color:var(--text-muted)">Select evidence for forensic audit.</p>';
+                hexSect.style.display = 'none';
             }
         }
-        window.onload = sync;
+
+        // --- UI INTERACTION ---
+        function handleSelect(e, id) {
+            e.stopPropagation();
+            if (e.ctrlKey || e.metaKey) {
+                if (state.selectedIds.includes(id)) state.selectedIds = state.selectedIds.filter(x => x !== id);
+                else state.selectedIds.push(id);
+            } else { state.selectedIds = [id]; }
+            save();
+        }
+
+        function handleItemContext(e, id) {
+            e.preventDefault(); e.stopPropagation();
+            if (!state.selectedIds.includes(id)) state.selectedIds = [id];
+            render();
+            const item = getCurrentDir().find(i => i.id === id);
+            const menu = document.getElementById('ctx-menu');
+            menu.style.display = 'block'; menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px';
+            menu.innerHTML = `
+                <div class="ctx-item" onclick="openPreview('${id}')"><i class="ph ph-eye"></i> View Artifact</div>
+                <div class="ctx-item hold-item" onclick="toggleLegalHold()"><i class="ph ph-scales"></i> ${item.legalHold ? 'Release Hold' : 'Apply Legal Hold'}</div>
+                <div style="height:1px; background:var(--border); margin:4px 0"></div>
+                <div class="ctx-item" onclick="updateStatus('awaiting')"><span class="status-dot" style="background:var(--status-awaiting)"></span> Set Awaiting</div>
+                <div class="ctx-item" onclick="updateStatus('progress')"><span class="status-dot" style="background:var(--status-progress)"></span> Set In Progress</div>
+                <div class="ctx-item" onclick="updateStatus('complete')"><span class="status-dot" style="background:var(--status-complete)"></span> Set Complete</div>
+                <div style="height:1px; background:var(--border); margin:4px 0"></div>
+                <div class="ctx-item" onclick="openRenameModal()"><i class="ph ph-pencil"></i> Rename</div>
+                <div class="ctx-item" onclick="copySelection('copy')"><i class="ph ph-copy"></i> Copy</div>
+                <div class="ctx-item danger" onclick="deleteSelection()"><i class="ph ph-trash"></i> Delete</div>
+            `;
+        }
+
+        function handleCanvasContext(e) {
+            e.preventDefault();
+            if(!state.selectedMatterId) return;
+            const menu = document.getElementById('ctx-menu');
+            menu.style.display = 'block'; menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px';
+            menu.innerHTML = `
+                <div class="ctx-item" onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> New Folder</div>
+                <div class="ctx-item" onclick="triggerUpload()"><i class="ph ph-file-arrow-up"></i> Ingest Evidence</div>
+                <div class="ctx-item" onclick="pasteItem()"><i class="ph ph-clipboard-text"></i> Paste</div>
+            `;
+        }
+
+        // PREVIEW AS IS FUNCTION
+        function openPreview(id) {
+            const item = getCurrentDir().find(i => i.id === id);
+            if(!item || item.type === 'folder') return;
+
+            document.getElementById('preview-title').innerText = item.name;
+            const body = document.getElementById('preview-body');
+            body.innerHTML = '';
+
+            const type = item.type;
+            if (type.startsWith('image/')) {
+                body.innerHTML = `<img src="${item.data}" style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 10px 30px rgba(0,0,0,0.1)">`;
+            } else if (type === 'application/pdf') {
+                body.innerHTML = `<embed src="${item.data}" type="application/pdf" width="100%" height="100%">`;
+            } else if (type.startsWith('text/') || type.includes('javascript') || type.includes('json') || type.includes('html')) {
+                const text = atob(item.data.split(',')[1]);
+                body.innerHTML = `<pre style="width:100%; height:100%; padding:30px; font-family:'JetBrains Mono'; font-size:13px; background:white; overflow:auto; white-space:pre-wrap; border:1px solid var(--border)">${text}</pre>`;
+            } else {
+                body.innerHTML = `
+                    <div style="text-align:center">
+                        <i class="ph ph-file-warning" style="font-size:64px; color:var(--text-muted)"></i>
+                        <h4 style="margin-top:15px">No Native Preview Available</h4>
+                        <p style="color:var(--text-muted); font-size:12px; margin-top:5px">Type: ${type}</p>
+                        <button class="btn btn-brand" style="margin:20px auto" onclick="copyToClipboard('${item.hex}')">Copy Hex String</button>
+                    </div>
+                `;
+            }
+            openModal('preview-modal');
+        }
+
+        function undo() { if(!undoStack.length) return; redoStack.push(JSON.stringify(state.matters)); state.matters = JSON.parse(undoStack.pop()); save(); }
+        function redo() { if(!redoStack.length) return; undoStack.push(JSON.stringify(state.matters)); state.matters = JSON.parse(redoStack.pop()); save(); }
+        function copySelection(mode) { const items = getCurrentDir().filter(i => state.selectedIds.includes(i.id)); state.clipboard = { action: mode, items: JSON.parse(JSON.stringify(items)) }; save(); }
+        function pasteItem() { if(!state.clipboard) return; pushHistory(); const dir = getCurrentDir(); state.clipboard.items.forEach(i => dir.push({...i, id: 'CPY-'+Date.now()+Math.random(), legalHold: false})); save(); }
+        function openRenameModal() { const item = getCurrentDir().find(i => state.selectedIds.includes(i.id)); if(item.legalHold) return alert("Hold active."); document.getElementById('rename-input').value = item.name; openModal('rename-modal'); }
+        function applyRename() { const name = document.getElementById('rename-input').value; const item = getCurrentDir().find(i => state.selectedIds.includes(i.id)); if(name && item) { pushHistory(); item.name = name; closeModal('rename-modal'); save(); } }
+
+        function exportManifest() {
+            const matter = getActiveMatter();
+            const items = getCurrentDir();
+            let csv = "Name,Status,Bates,Size,Hash,Hold\n";
+            items.forEach(i => csv += `"${i.name}","${getStatusLabel(i.status)}","${i.bates}","${i.size}","${i.hash}","${i.legalHold?'Y':'N'}"\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `VAULT_MANIFEST_${matter.prefix}.csv`; a.click();
+        }
+
+        function triggerUpload() { document.getElementById('hidden-file-input').click(); }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function hideContextMenus() { document.getElementById('ctx-menu').style.display = 'none'; }
+        function handleGlobalKeys(e) {
+            if (e.ctrlKey && e.key === 'z') undo();
+            if (e.ctrlKey && e.key === 'y') redo();
+            if (e.key === 'Delete') deleteSelection();
+        }
+
+        window.onload = render;
     </script>
 </body>
 </html>
