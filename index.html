@@ -5,184 +5,327 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lwazi OS | Intelligence Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root {
             --brand: #2563eb;
+            --brand-dark: #1e40af;
             --top-bg: #0f172a;
-            --bg-canvas: #f1f5f9;
+            --bg-canvas: #f8fafc;
             --border: #e2e8f0;
-            --text-main: #1e293b;
+            --text-main: #0f172a;
             --text-muted: #64748b;
-            --emerald: #10b981;
-            --rose: #f43f5e;
+            --emerald: #059669;
+            --rose: #e11d48;
             --white: #ffffff;
+            --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
         }
 
+        /* --- GLOBAL LAYOUT --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-canvas); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-canvas); 
+            color: var(--text-main); 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            -webkit-font-smoothing: antialiased;
+        }
 
-        /* --- TIER 1: BRANDING --- */
-        .tier-1 { background: var(--top-bg); color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-        .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; }
-        .logo span { color: var(--brand); font-size: 0.8rem; letter-spacing: 1px; }
+        /* --- NAVIGATION TIERS --- */
+        .tier-1 { background: var(--top-bg); color: white; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; }
+        .tier-2 { background: var(--white); border-bottom: 1px solid var(--border); height: 48px; display: flex; align-items: center; padding: 0 24px; flex-shrink: 0; }
+        .tier-3 { background: #ffffff; border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; }
 
-        /* --- TIER 2: PRIMARY NAVIGATION --- */
-        .tier-2 { background: var(--white); border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-        .nav-links { display: flex; gap: 24px; height: 100%; }
-        .nav-link { height: 100%; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; transition: 0.2s; }
-        .nav-link.active { color: var(--brand); border-bottom-color: var(--brand); }
-        .nav-link:hover { color: var(--brand); }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1rem; }
+        .logo span { color: #94a3b8; font-size: 0.7rem; letter-spacing: 1.5px; font-weight: 400; text-transform: uppercase; }
 
-        /* --- TIER 3: COMMAND BAR --- */
-        .tier-3 { background: var(--white); border-bottom: 1px solid var(--border); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
-        .control-group { display: flex; align-items: center; gap: 10px; }
+        .nav-links { display: flex; gap: 8px; height: 100%; }
+        .nav-link { height: 100%; display: flex; align-items: center; padding: 0 16px; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text-muted); text-decoration: none; position: relative; transition: 0.2s; }
+        .nav-link.active { color: var(--brand); }
+        .nav-link.active::after { content: ''; position: absolute; bottom: -1px; left: 16px; right: 16px; height: 2px; background: var(--brand); }
+        .nav-link:hover:not(.active) { color: var(--text-main); background: #f1f5f9; }
 
-        /* --- MAIN VIEWPORT --- */
-        main { flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-content: start; }
+        /* --- MAIN GRID --- */
+        main { 
+            flex: 1; 
+            padding: 24px; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: auto 1fr 1.2fr; 
+            gap: 24px; 
+            overflow: hidden; 
+            max-width: 1800px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
         .stats-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-        .stat-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .stat-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
-        .stat-value { font-size: 24px; font-weight: 700; }
+        .stat-card { background: white; padding: 18px; border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--card-shadow); }
+        .stat-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .stat-value { font-size: 22px; font-weight: 700; }
 
-        .card { background: white; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .card-header { padding: 0 24px; height: 50px; background: #f8fafc; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .card-header h3 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        /* --- SCROLLABLE CARD SYSTEM --- */
+        .card { 
+            background: white; 
+            border-radius: 8px; 
+            border: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            box-shadow: var(--card-shadow);
+        }
+        .card-header { 
+            flex-shrink: 0;
+            padding: 0 18px; 
+            height: 44px; 
+            background: #fafafa; 
+            border-bottom: 1px solid var(--border); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .card-header h3 { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 
-        .tabs-header { display: flex; gap: 20px; height: 100%; }
-        .tab-item { height: 100%; display: flex; align-items: center; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text-muted); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .card-body-scroll {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* --- TABLES --- */
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { 
+            background: #f8fafc; 
+            padding: 12px 18px; 
+            font-size: 10px; 
+            font-weight: 700; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            border-bottom: 1px solid var(--border); 
+            position: sticky; top: 0; z-index: 10;
+        }
+        td { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; color: #334155; }
+        
+        /* Row Highlighting & Hover */
+        .row-matter { cursor: pointer; transition: background 0.1s; }
+        .row-matter:hover td { background: #f8fafc; }
+        tr.active-case td { background: #f0f7ff !important; border-top: 1px solid #dbeafe; border-bottom: 1px solid #dbeafe; }
+        tr.active-case td:first-child { border-left: 3px solid var(--brand); }
+
+        .tabs-header { display: flex; gap: 24px; height: 100%; }
+        .tab-item { height: 100%; display: flex; align-items: center; cursor: pointer; font-size: 11px; font-weight: 700; color: var(--text-muted); border-bottom: 2px solid transparent; }
         .tab-item.active { color: var(--brand); border-bottom-color: var(--brand); }
 
-        .scroll-area { max-height: 400px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: #f8fafc; padding: 12px 20px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
-        td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 13px; }
-        tr.active-case td { background: #f5f8ff; border-left: 4px solid var(--brand); }
+        /* --- BUTTONS & INPUTS --- */
+        .btn { padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; transition: 0.2s; }
+        .btn-brand { background: var(--brand); color: white; }
+        .btn-brand:hover { background: var(--brand-dark); }
+        .btn-outline { background: white; border-color: var(--border); color: var(--text-main); }
+        .btn-outline:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
 
-        .notification-item { padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; gap: 15px; align-items: center; }
-        .notif-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: var(--brand); font-size: 16px; }
+        .input-ctrl { padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 13px; width: 100%; transition: 0.2s; }
+        .input-ctrl:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        
+        code { font-family: 'JetBrains Mono', monospace; background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-size: 11px; color: #475569; }
+
+        .notification-item { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; gap: 14px; }
+        .notif-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: var(--brand); flex-shrink: 0; }
+        .notif-icon.success { background: #ecfdf5; color: var(--emerald); }
         .notif-icon.warn { background: #fff1f2; color: var(--rose); }
 
-        .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; }
-        .btn-brand { background: var(--brand); color: white; }
-        .btn-outline { background: white; border-color: var(--border); color: var(--text-main); }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .input-ctrl { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
-        
-        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
-        .modal-card { background: white; width: 450px; border-radius: 16px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); }
-        code { font-family: 'JetBrains Mono', monospace; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; font-size: 11px; }
+        /* SCROLLBARS */
+        .card-body-scroll::-webkit-scrollbar { width: 6px; }
+        .card-body-scroll::-webkit-scrollbar-track { background: transparent; }
+        .card-body-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(8px); }
+        .modal-card { background: white; width: 420px; border-radius: 12px; padding: 28px; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); border: 1px solid var(--border); }
+
+        /* --- MOBILE VIEW ADDITIONS --- */
+        @media (max-width: 900px) {
+            body { 
+                overflow-y: auto; 
+                height: auto; 
+                min-height: 100vh;
+            }
+            .tier-1 { padding: 0 15px; }
+            .logo span { display: none; }
+            
+            .tier-2 { 
+                overflow-x: auto; 
+                padding: 0 10px; 
+                justify-content: flex-start;
+            }
+            .nav-links { gap: 0; }
+
+            .tier-3 { 
+                height: auto; 
+                flex-direction: column; 
+                padding: 15px; 
+                gap: 15px; 
+                align-items: flex-start;
+            }
+            .control-group { width: 100%; display: flex; overflow-x: auto; padding-bottom: 5px; }
+            .input-ctrl { width: 100% !important; }
+
+            main { 
+                display: flex; 
+                flex-direction: column; 
+                padding: 15px; 
+                gap: 15px; 
+                height: auto;
+                overflow: visible;
+            }
+            .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .card { min-height: 350px; }
+            .modal-card { width: 90%; padding: 20px; }
+            
+            /* Allow tables to be scrollable horizontally on mobile */
+            .card-body-scroll { overflow-x: auto; }
+            table { min-width: 600px; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- TIER 1 -->
+    <!-- BRANDING TIER -->
     <header class="tier-1">
-        <div class="logo"><i class="ph-fill ph-scales"></i> LWAZI <span>INTELLIGENCE</span></div>
-        <div style="display:flex; gap:20px; align-items:center;">
-            <div style="text-align:right"><div style="font-size:12px; font-weight:700">Attorney Alpha</div><div style="font-size:10px; color:#94a3b8">Role: SuperUser</div></div>
-            <div style="width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display:flex; align-items:center; justify-content:center; font-weight:800; color:white;">AA</div>
+        <div class="logo"><i class="ph-fill ph-scales"></i> LWAZI <span>Intelligence OS</span></div>
+        <div style="display:flex; gap:16px; align-items:center;">
+            <div style="text-align:right" class="mobile-hide">
+                <div style="font-size:12px; font-weight:700">Attorney Alpha</div>
+                <div style="font-size:10px; color:#94a3b8; text-transform:uppercase;">SuperUser Level 4</div>
+            </div>
+            <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--brand), var(--brand-dark)); border-radius: 6px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:800; border: 1px solid rgba(255,255,255,0.2)">AA</div>
         </div>
     </header>
 
-    <!-- TIER 2: SHARED NAVIGATION -->
+    <!-- NAV TIER -->
     <nav class="tier-2">
         <div class="nav-links">
             <a href="index.html" class="nav-link active"><i class="ph ph-chart-line"></i> Dashboard</a>
-            <a href="matters.html" class="nav-link"><i class="ph ph-briefcase"></i> Operations Hub</a>
-            <a href="files.html" class="nav-link"><i class="ph ph-vault"></i> Evidence Vault</a>
+            <a href="matters.html" class="nav-link"><i class="ph ph-briefcase"></i> Cases</a>
+            <a href="files.html" class="nav-link"><i class="ph ph-shield-check"></i> Vault</a>
         </div>
     </nav>
 
-    <!-- TIER 3 -->
+    <!-- ACTION TIER -->
     <section class="tier-3">
         <div class="control-group">
-            <button class="btn btn-brand" onclick="openModal('m-modal')"><i class="ph ph-plus-circle"></i> New Matter</button>
-            <button class="btn btn-outline matter-btn" disabled onclick="openModal('email-modal')"><i class="ph ph-paper-plane-tilt"></i> Create Email</button>
-            <div style="width: 1px; height: 24px; background: var(--border); margin: 0 5px;"></div>
-            <button class="btn btn-outline matter-btn" disabled onclick="ingestSim('Forensic')"><i class="ph ph-hard-drive"></i> Ingest</button>
+            <button class="btn btn-outline matter-btn" disabled onclick="openModal('email-modal')"><i class="ph ph-paper-plane-tilt"></i> Email</button>
             <button class="btn btn-outline matter-btn" id="hold-btn" disabled onclick="toggleHold()"><i class="ph ph-lock"></i> Legal Hold</button>
         </div>
         <div class="control-group">
-            <input type="text" class="input-ctrl" placeholder="Global Context Search..." style="width: 250px;">
+            <div style="position:relative; width: 100%;">
+                <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:14px;"></i>
+                <input type="text" class="input-ctrl" placeholder="Search matters..." style="width: 280px; padding-left: 36px;">
+            </div>
         </div>
     </section>
 
     <main>
-        <!-- STATS -->
+        <!-- ROW 1: METRICS -->
         <div class="stats-row">
-            <div class="stat-card"><div class="stat-label">System Health</div><div class="stat-value" style="color:var(--emerald)">Optimal</div></div>
-            <div class="stat-card"><div class="stat-label">Active Matters</div><div class="stat-value" id="stat-matters">0</div></div>
-            <div class="stat-card"><div class="stat-label">Discovery Units</div><div class="stat-value" id="stat-docs">0</div></div>
-            <div class="stat-card"><div class="stat-label">Audit Alerts</div><div class="stat-value" id="stat-notif" style="color:var(--rose)">0</div></div>
+            <div class="stat-card">
+                <div class="stat-label">Health</div>
+                <div class="stat-value" style="color:var(--emerald); font-size: 16px; display:flex; align-items:center; gap:8px;"><i class="ph-fill ph-check-circle"></i> Optimal</div>
+            </div>
+            <div class="stat-card"><div class="stat-label">Matters</div><div class="stat-value" id="stat-matters">0</div></div>
+            <div class="stat-card"><div class="stat-label">Discovery</div><div class="stat-value" id="stat-docs">0</div></div>
+            <div class="stat-card"><div class="stat-label">Alerts</div><div class="stat-value" id="stat-notif" style="color:var(--rose)">0</div></div>
         </div>
 
-        <!-- LEFT: MATTERS -->
+        <!-- ROW 2, LEFT: MATTER INDEX -->
         <div class="card">
-            <div class="card-header"><h3>Matter Index</h3></div>
-            <div class="scroll-area">
+            <div class="card-header"><h3>Matter Index</h3><i class="ph ph-list-numbers"></i></div>
+            <div class="card-body-scroll">
                 <table>
-                    <thead><tr><th>ID</th><th>Caption</th><th>Lead</th><th>Action</th></tr></thead>
-                    <tbody id="matter-tbody"></tbody>
+                    <thead><tr><th>Ref_ID</th><th>Case Caption</th><th>Lead Attorney</th><th>Status</th></tr></thead>
+                    <tbody id="matter-tbody">
+                        <!-- Content via JS -->
+                    </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- RIGHT: TABBED INTELLIGENCE -->
+        <!-- ROW 2, RIGHT: TABBED INTEL -->
         <div class="card">
-            <div class="card-header" style="padding: 0 24px;">
+            <div class="card-header">
                 <div class="tabs-header">
-                    <div class="tab-item active" id="tab-analytics-link" onclick="switchTab('analytics')">Analytics</div>
-                    <div class="tab-item" id="tab-notifications-link" onclick="switchTab('notifications')">Notifications</div>
+                    <div class="tab-item active" id="tab-analytics-link" onclick="switchTab('analytics')">Intelligence</div>
+                    <div class="tab-item" id="tab-notifications-link" onclick="switchTab('notifications')">System Log</div>
                     <div class="tab-item" id="tab-requests-link" onclick="switchTab('requests')">Requests</div>
                 </div>
             </div>
             
-            <div id="tab-analytics" class="tab-content" style="padding: 24px; flex:1;">
-                <canvas id="analyticsChart" style="max-height: 280px;"></canvas>
+            <div id="tab-analytics" class="tab-content card-body-scroll" style="padding: 24px;">
+                <canvas id="analyticsChart" style="max-height: 220px;"></canvas>
             </div>
 
-            <div id="tab-notifications" class="tab-content" style="display:none; flex:1; overflow-y:auto;">
+            <div id="tab-notifications" class="tab-content card-body-scroll" style="display:none;">
                 <div id="notification-list"></div>
             </div>
 
-            <div id="tab-requests" class="tab-content" style="display:none; flex:1;">
+            <div id="tab-requests" class="tab-content card-body-scroll" style="display:none;">
                 <table>
-                    <thead><tr><th>Req_ID</th><th>Description</th><th>Priority</th></tr></thead>
-                    <tbody id="request-tbody"></tbody>
+                    <thead><tr><th>Ticket</th><th>Service Request</th><th>Priority</th></tr></thead>
+                    <tbody id="request-tbody">
+                        <!-- Content via JS -->
+                    </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- BOTTOM: VAULT -->
+        <!-- ROW 3: BOTTOM VAULT -->
         <div class="card" style="grid-column: 1 / -1;">
             <div class="card-header">
-                <h3>Forensic Audit Trail: <span id="active-matter-label" style="color:var(--brand)">No Active Matter</span></h3>
+                <h3>Forensic Audit Trail: <span id="active-matter-label" style="color:var(--brand); font-weight:800; margin-left:10px;">Select a matter</span></h3>
             </div>
-            <div class="scroll-area">
+            <div class="card-body-scroll">
                 <table>
-                    <thead><tr><th>Bates ID</th><th>Filename</th><th>MD5 Hash Checksum</th><th>Source</th><th>Date</th></tr></thead>
-                    <tbody id="vault-tbody"></tbody>
+                    <thead><tr><th>Bates ID</th><th>Ingested Asset Name</th><th>MD5 Hash Signature</th><th>Primary Source</th><th>Ingest Timestamp</th></tr></thead>
+                    <tbody id="vault-tbody">
+                        <!-- Content via JS -->
+                    </tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <!-- NEW MATTER MODAL -->
+    <!-- PRECISION MATTER MODAL -->
     <div id="m-modal" class="modal-overlay">
         <div class="modal-card">
-            <h2 style="margin-bottom: 20px;">Initialize Matter</h2>
-            <div style="display:flex; flex-direction:column; gap:15px;">
-                <input type="text" id="new-m-name" class="input-ctrl" placeholder="Matter Name">
-                <input type="text" id="new-m-pre" class="input-ctrl" placeholder="Bates Prefix (e.g. ABC)">
-                <input type="text" id="new-m-lead" class="input-ctrl" placeholder="Lead Attorney">
+            <h3 style="margin-bottom: 4px;">Initialize Matter</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px;">Complete fields to provision.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:16px;">
+                <div>
+                    <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px; text-transform:uppercase;">Matter Caption</label>
+                    <input type="text" id="new-m-name" class="input-ctrl" placeholder="Acme v. Smith">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                    <div>
+                        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px; text-transform:uppercase;">Prefix</label>
+                        <input type="text" id="new-m-pre" class="input-ctrl" placeholder="ABC">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px; text-transform:uppercase;">Lead</label>
+                        <input type="text" id="new-m-lead" class="input-ctrl" placeholder="Lwazi, A.">
+                    </div>
+                </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
-                <button class="btn btn-outline" onclick="closeModal('m-modal')">Cancel</button>
-                <button class="btn btn-brand" onclick="createMatter()">Initialize</button>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
+                <button class="btn btn-outline" onclick="closeModal('m-modal')">Discard</button>
+                <button class="btn btn-brand" onclick="createMatter()">Provision</button>
             </div>
         </div>
     </div>
@@ -190,173 +333,150 @@
     <!-- EMAIL MODAL -->
     <div id="email-modal" class="modal-overlay">
         <div class="modal-card">
-            <h2 style="margin-bottom: 20px;">Draft Legal Communication</h2>
+            <h3 style="margin-bottom: 20px;">Draft Communication</h3>
             <div style="display:flex; flex-direction:column; gap:12px;">
-                <input type="text" class="input-ctrl" placeholder="Recipient Address">
+                <input type="text" class="input-ctrl" placeholder="Recipient">
                 <input type="text" id="email-subject" class="input-ctrl" placeholder="Subject">
-                <textarea class="input-ctrl" style="height: 150px; resize: none;" placeholder="Message Body..."></textarea>
+                <textarea class="input-ctrl" style="height: 120px; resize: none; font-family: inherit;" placeholder="Message..."></textarea>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button class="btn btn-outline" onclick="closeModal('email-modal')">Discard</button>
-                <button class="btn btn-brand" onclick="sendEmailSim()">Send Encrypted Email</button>
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px;">
+                <button class="btn btn-outline" onclick="closeModal('email-modal')">Cancel</button>
+                <button class="btn btn-brand" onclick="sendEmailSim()">Dispatch</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- SHARED DATA ENGINE ---
-        const DB_KEY = 'LWAZI_OS_DATA';
-        let state = JSON.parse(localStorage.getItem(DB_KEY)) || {
-            matters: [],
-            notifications: [{ type: 'info', msg: 'System Audit Engine Online.', time: '09:00:00' }],
-            requests: [{ id: 'R-101', desc: 'Employee Metadata Export', pri: 'High' }],
-            selectedMatterId: null
-        };
+ 
+<script>
+    // UNIFIED SYSTEM SETTINGS
+    const DB_KEY = 'LWAZI_PRO_SYSTEM_SHARED';
+    
+    let state = JSON.parse(localStorage.getItem(DB_KEY)) || {
+        matters: [],
+        notifications: [{ type: 'info', msg: 'Core Intelligence Engine Online.', time: '09:00:00' }],
+        requests: [{ id: 'R-101', desc: 'Metadata Export: Custodian 04', pri: 'High' }],
+        selectedMatterId: null
+    };
 
-        let chart = null;
+    let chart = null;
 
-        function sync() {
-            localStorage.setItem(DB_KEY, JSON.stringify(state));
-            render();
-            updateStats();
-            updateChart();
-        }
+    function sync() {
+        localStorage.setItem(DB_KEY, JSON.stringify(state));
+        render();
+        updateStats();
+        updateChart();
+    }
 
-        // UI Helpers
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    // Navigation logic
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+        document.getElementById(`tab-${tab}`).style.display = 'block';
+        document.getElementById(`tab-${tab}-link`).classList.add('active');
+    }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-            document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
-            document.getElementById(`tab-${tab}`).style.display = 'block';
-            document.getElementById(`tab-${tab}-link`).classList.add('active');
-        }
+    function pushNotif(msg, type = 'info') {
+        state.notifications.unshift({ type, msg, time: new Date().toLocaleTimeString() });
+        sync();
+    }
 
-        function pushNotif(msg, type = 'info') {
-            state.notifications.unshift({ type, msg, time: new Date().toLocaleTimeString() });
-            sync();
-        }
+    function createMatter() {
+        const name = document.getElementById('new-m-name').value;
+        const prefix = document.getElementById('new-m-pre').value.trim().toUpperCase();
+        const lead = document.getElementById('new-m-lead').value;
+        if(!name || !prefix || !lead) return alert("All fields required.");
 
-        // Core Functions
-        function createMatter() {
-            const name = document.getElementById('new-m-name').value;
-            const prefix = document.getElementById('new-m-pre').value.toUpperCase();
-            const lead = document.getElementById('new-m-lead').value;
-            if(!name || !prefix) return;
+        const id = 'MAT-' + Math.floor(1000 + Math.random() * 9000);
+        state.matters.push({ 
+            id, name, prefix, lead, hold: false, 
+            files: [], audit: [], tasks: [], 
+            status: 'Active', lastBates: 0 
+        });
+        
+        pushNotif(`Matter provisioned: ${name}`, 'success');
+        closeModal('m-modal');
+        sync();
+    }
 
-            const newMatter = {
-                id: 'MAT-' + Date.now().toString().slice(-4),
-                name, prefix, lead,
-                hold: false,
-                events: [],
-                files: [],
-                number: 'TBD-' + Math.floor(Math.random()*1000),
-                jurisdiction: 'Unassigned',
-                type: 'Civil Litigation'
-            };
-            state.matters.push(newMatter);
-            pushNotif(`New Matter initialized: ${name}`, 'success');
-            closeModal('m-modal');
-            sync();
-        }
+    function handleMatterClick(id) {
+        state.selectedMatterId = id;
+        localStorage.setItem(DB_KEY, JSON.stringify(state));
+        window.location.href = 'matters.html';
+    }
 
-        function selectMatter(id) {
-            state.selectedMatterId = id;
-            document.querySelectorAll('.matter-btn').forEach(b => b.disabled = false);
-            sync();
-        }
+    function previewMatter(id) {
+        state.selectedMatterId = id;
+        document.querySelectorAll('.matter-btn').forEach(b => b.disabled = false);
+        sync();
+    }
 
-        function toggleHold() {
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            m.hold = !m.hold;
-            pushNotif(`Legal Hold ${m.hold ? 'Applied' : 'Released'} on ${m.name}`, m.hold ? 'warn' : 'info');
-            sync();
-        }
+    function toggleHold() {
+        const m = state.matters.find(x => x.id === state.selectedMatterId);
+        if(!m) return;
+        m.hold = !m.hold;
+        pushNotif(`Legal Hold ${m.hold ? 'Applied' : 'Released'} on ${m.name}`, m.hold ? 'warn' : 'info');
+        sync();
+    }
 
-        function sendEmailSim() {
-            const subject = document.getElementById('email-subject').value;
-            pushNotif(`Outbound Email Logged: ${subject}`, 'info');
-            closeModal('email-modal');
-        }
+    function render() {
+        const mBody = document.getElementById('matter-tbody');
+        mBody.innerHTML = state.matters.map(m => `
+            <tr class="row-matter ${state.selectedMatterId === m.id ? 'active-case' : ''}" onclick="previewMatter('${m.id}')" ondblclick="handleMatterClick('${m.id}')">
+                <td><code>${m.id}</code></td>
+                <td><strong>${m.name}</strong></td>
+                <td>${m.lead}</td>
+                <td><button class="btn btn-outline" style="padding:4px 8px; font-size:10px" onclick="handleMatterClick('${m.id}')">Open Case</button></td>
+            </tr>
+        `).join('');
 
-        function ingestSim(source) {
-            const m = state.matters.find(x => x.id === state.selectedMatterId);
-            if(!m.files) m.files = [];
-            const bates = `${m.prefix}-${(m.files.length + 1001)}`;
-            m.files.unshift({ 
-                id: 'FIL-' + Date.now(),
-                bates, 
-                name: `${source}_INGEST_${Math.floor(Math.random()*1000)}.PDF`, 
-                hash: Math.random().toString(16).slice(2,12).toUpperCase(), 
-                date: new Date().toLocaleDateString(),
-                source: source,
-                size: '244 KB',
-                path: ''
-            });
-            pushNotif(`Forensic Ingest Successful: ${bates}`, 'info');
-            sync();
-        }
-
-        // Rendering
-        function render() {
-            const mBody = document.getElementById('matter-tbody');
-            mBody.innerHTML = state.matters.map(m => `
-                <tr class="clickable ${state.selectedMatterId === m.id ? 'active-case' : ''}" onclick="selectMatter('${m.id}')">
-                    <td><code>${m.id}</code></td>
-                    <td><strong>${m.name}</strong></td>
-                    <td>${m.lead || '---'}</td>
-                    <td><button class="btn btn-outline" style="padding:4px 8px" onclick="location.href='matters.html'">Hub</button></td>
-                </tr>
+        const active = state.matters.find(x => x.id === state.selectedMatterId);
+        if(active) {
+            document.getElementById('active-matter-label').innerText = active.name;
+            document.getElementById('vault-tbody').innerHTML = (active.files || []).map(f => `
+                <tr><td><code>${f.bates}</code></td><td>${f.name}</td><td><code>${f.hash || 'N/A'}</code></td><td>${f.source || 'Manual'}</td><td>${f.date}</td></tr>
             `).join('');
-
-            const active = state.matters.find(x => x.id === state.selectedMatterId);
-            if(active) {
-                document.getElementById('active-matter-label').innerText = active.name;
-                document.getElementById('vault-tbody').innerHTML = (active.files || []).map(f => `
-                    <tr><td><code>${f.bates || 'DIR'}</code></td><td>${f.name}</td><td><code>${f.hash || '---'}</code></td><td>${f.source || 'Vault'}</td><td>${f.date || '--'}</td></tr>
-                `).join('');
-                document.getElementById('hold-btn').innerHTML = active.hold ? '<i class="ph ph-lock-open"></i> Release Hold' : '<i class="ph ph-lock"></i> Legal Hold';
-            }
-
-            document.getElementById('notification-list').innerHTML = state.notifications.map(n => `
-                <div class="notification-item">
-                    <div class="notif-icon ${n.type === 'warn' ? 'warn' : ''}"><i class="ph ph-${n.type === 'warn' ? 'warning-circle' : 'info'}"></i></div>
-                    <div><div style="font-size:13px; font-weight:600;">${n.msg}</div><div style="font-size:11px; color:var(--text-muted);">${n.time}</div></div>
-                </div>
-            `).join('');
-
-            document.getElementById('request-tbody').innerHTML = state.requests.map(r => `
-                <tr><td><code>${r.id}</code></td><td>${r.desc}</td><td><span style="color:var(--rose); font-weight:700;">${r.pri}</span></td></tr>
-            `).join('');
+            document.getElementById('hold-btn').innerHTML = active.hold ? '<i class="ph ph-lock-open"></i> Release' : '<i class="ph ph-lock"></i> Hold';
         }
 
-        function updateStats() {
-            document.getElementById('stat-matters').innerText = state.matters.length;
-            document.getElementById('stat-notif').innerText = state.notifications.length;
-            let totalDocs = 0; 
-            state.matters.forEach(m => totalDocs += (m.files ? m.files.length : 0));
-            document.getElementById('stat-docs').innerText = totalDocs;
-        }
+        document.getElementById('notification-list').innerHTML = state.notifications.map(n => `
+            <div class="notification-item">
+                <div class="notif-icon ${n.type === 'warn' ? 'warn' : n.type === 'success' ? 'success' : ''}"><i class="ph ph-info"></i></div>
+                <div><div style="font-size:12px; font-weight:700;">${n.msg}</div><div style="font-size:10px; color:var(--text-muted);">${n.time}</div></div>
+            </div>
+        `).join('');
 
-        function updateChart() {
-            const ctx = document.getElementById('analyticsChart').getContext('2d');
-            const active = state.matters.find(x => x.id === state.selectedMatterId);
-            const docCount = active && active.files ? active.files.length : 0;
-            const data = active ? [docCount, Math.floor(docCount*0.4), Math.floor(docCount*0.1)] : [0, 0, 0];
-            
-            if(chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Processed', 'Reviewed', 'Flagged'],
-                    datasets: [{ data: data, backgroundColor: ['#2563eb', '#10b981', '#f43f5e'] }]
-                },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-            });
-        }
+        document.getElementById('request-tbody').innerHTML = state.requests.map(r => `
+            <tr><td><code>${r.id}</code></td><td>${r.desc}</td><td><span style="color:var(--rose); font-weight:800;">${r.pri}</span></td></tr>
+        `).join('');
+    }
 
-        window.onload = sync;
-    </script>
+    function updateStats() {
+        document.getElementById('stat-matters').innerText = state.matters.length;
+        document.getElementById('stat-notif').innerText = state.notifications.length;
+        let totalDocs = 0; 
+        state.matters.forEach(m => totalDocs += (m.files ? m.files.length : 0));
+        document.getElementById('stat-docs').innerText = totalDocs;
+    }
+
+    function updateChart() {
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+        const active = state.matters.find(x => x.id === state.selectedMatterId);
+        const docCount = active ? active.files.length : 0;
+        if(chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Processed', 'Reviewed', 'Flagged'],
+                datasets: [{ data: [docCount, 0, 0], backgroundColor: ['#2563eb', '#10b981', '#f43f5e'], borderWeight: 0 }]
+            },
+            options: { cutout: '75%', maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    window.onload = sync;
+</script>
 </body>
 </html>
