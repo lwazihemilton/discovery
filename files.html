@@ -1,3 +1,5 @@
+--- START OF FILE Paste June 07, 2026 - 5:38PM ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -284,7 +286,7 @@
         }
 
         @media (max-width: 768px) {
-            body { overflow: hidden; height: 100vh; }
+            body { overflow: hidden; height: 100vh; position: fixed; width: 100%; }
             header .logo span { display: none; }
             main { 
                 display: flex; 
@@ -293,29 +295,31 @@
                 height: calc(100vh - 50px - 55px); 
             }
             
+            /* Change sidebar to a horizontal navigation strip at the bottom */
             .sidebar { 
                 order: 3; 
                 border-right: none; 
                 border-top: 1px solid var(--border); 
-                height: 60px; 
+                height: 55px; 
                 flex-direction: row;
                 overflow-x: auto;
                 overflow-y: hidden;
                 flex-shrink: 0;
+                background: #f8fafc;
             }
-            .sidebar > div:first-child,
-            .sidebar > div:nth-child(3) { display: none; } /* Hide labels on mobile sidebar */
-            .sidebar-item { 
-                padding: 0 15px; 
-                height: 100%; 
-                border-right: 1px solid var(--border); 
+            .sidebar > div:first-child, 
+            .sidebar > div:nth-child(3) { display: none; } /* Hide labels */
+            .sidebar-item {
+                flex: 1;
+                justify-content: center;
+                padding: 0 10px;
+                border-right: 1px solid var(--border);
                 border-bottom: none !important;
-                border-right-width: 1px !important;
-                font-size: 11px;
                 white-space: nowrap;
+                font-size: 11px;
             }
-            .sidebar-item.active { border-right: none; background: var(--selection); }
-            
+            .sidebar-item.active { border-right: 1px solid var(--border); border-top: 3px solid var(--primary); background: white; }
+
             .explorer-container { 
                 order: 1; 
                 flex: 1;
@@ -327,34 +331,35 @@
                 order: 2; 
                 border-left: none; 
                 border-top: 1px solid var(--border);
-                height: 180px; 
-                padding: 15px;
+                height: auto;
+                max-height: 40%;
                 flex-shrink: 0;
                 display: block; 
+                padding: 12px;
             }
             
             nav.toolbar { 
                 padding: 0 10px; 
-                gap: 5px; 
-                white-space: nowrap;
+                gap: 4px; 
+                overflow-x: auto; 
                 justify-content: flex-start;
             }
-            nav.toolbar .btn { padding: 8px 10px; }
-            .search-input { width: 130px; font-size: 12px; }
+            .search-input { width: 120px; }
             
-            .breadcrumb-bar { font-size: 11px; overflow-x: auto; white-space: nowrap; }
-
+            /* Hide non-essential table columns on mobile */
             th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5),
             td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5) { display: none; }
             th:nth-child(1), td:nth-child(1) { width: 100% !important; }
 
+            /* Full screen preview/review for mobile */
             #preview-modal .modal { 
                 height: 100vh; 
                 width: 100vw; 
-                max-width: 100vw;
+                max-width: 100vw; 
                 max-height: 100vh;
-                padding: 10px; 
+                margin: 0;
                 border-radius: 0;
+                padding: 10px;
             }
             .preview-container { 
                 flex-direction: column; 
@@ -365,23 +370,19 @@
             .preview-content { 
                 min-height: 250px; 
                 flex: none; 
-                height: 300px; 
-                margin-bottom: 10px;
+                height: 350px; 
             }
             .review-panel { 
                 flex: none; 
                 height: auto; 
                 overflow: visible; 
-                padding: 10px;
-                border: none;
+                border-left: none;
+                border-top: 1px solid var(--border);
+                padding: 15px 0;
             }
             
             .analysis-grid { grid-template-columns: 1fr; }
             .mobile-hide { display: none; }
-
-            /* Better Context Menu Positioning for Touch */
-            #ctx-menu { min-width: 180px; }
-            .ctx-item { padding: 12px 15px; font-size: 14px; }
         }
     </style>
 </head>
@@ -407,7 +408,7 @@
         <button class="btn btn-brand action-btn" disabled onclick="triggerUpload()"><i class="ph ph-file-arrow-up"></i> <span class="mobile-hide">Ingest</span></button>
 		<button class="btn action-btn" disabled onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> <span class="mobile-hide">Folder</span></button>
         
-        <button class="btn action-btn" disabled onclick="runOCRAll()"><i class="ph ph-scan"></i> <span class="mobile-hide">Intelligence Extraction</span></button>
+        <button class="btn action-btn" disabled onclick="runOCRAll()"><i class="ph ph-scan"></i> <span class="mobile-hide">Intel Extraction</span></button>
         
         <button class="btn action-btn" disabled onclick="exportManifest()"><i class="ph ph-file-csv"></i> <span class="mobile-hide">Report</span></button>
         
@@ -422,7 +423,7 @@
         
         <div style="position:relative; flex-shrink:0;">
             <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:10px; color:var(--text-muted)"></i>
-            <input type="text" class="search-input" id="search-bar" placeholder="Intelligence search..." oninput="render()">
+            <input type="text" class="search-input" id="search-bar" placeholder="Search..." oninput="render()">
             <button class="btn" style="position:absolute; right:5px; top:5px; border:none; padding:4px" onclick="toggleFilters(event)"><i class="ph ph-funnel"></i></button>
         </div>
 
@@ -463,11 +464,11 @@
     <main>
         <aside class="sidebar">
             <div style="padding: 20px 20px 10px 20px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Investigations</div>
-            <div id="matter-list" style="display: contents;"></div>
+            <div id="matter-list" style="display:contents"></div>
             
             <div style="padding: 20px 20px 10px 20px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid var(--border); margin-top: 10px;">Intelligence</div>
-            <div class="sidebar-item" id="nav-explorer" onclick="setUIMode('explorer')"><i class="ph ph-folder"></i> <span class="mobile-hide">Artifact </span>Vault</div>
-            <div class="sidebar-item" id="nav-analysis" onclick="setUIMode('analysis')"><i class="ph ph-cpu"></i> <span class="mobile-hide">Intelligence </span>Lab</div>
+            <div class="sidebar-item" id="nav-explorer" onclick="setUIMode('explorer')"><i class="ph ph-folder"></i> <span class="mobile-hide">Artifact</span> Vault</div>
+            <div class="sidebar-item" id="nav-analysis" onclick="setUIMode('analysis')"><i class="ph ph-cpu"></i> <span class="mobile-hide">Intelligence</span> Lab</div>
         </aside>
 
         <!-- EXPLORER VAULT (Main Document View) -->
@@ -507,7 +508,7 @@
         <!-- ANALYSIS REPORT VIEW (New Intelligence Page) -->
         <section class="explorer-container" id="analysis-page" style="display:none;">
             <div class="breadcrumb-bar">Case Intelligence Report & OCR Results</div>
-            <div class="scroll-area" style="padding: 20px;" id="analysis-content">
+            <div class="scroll-area" style="padding: 15px;" id="analysis-content">
                 <!-- Analysis cards injected here -->
             </div>
             <div class="status-bar">
@@ -556,9 +557,9 @@
     <div id="preview-modal" class="modal-overlay" onclick="closeModal('preview-modal')">
         <div class="modal" style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap: wrap;">
+                <div style="display:flex; align-items:center; gap:20px; flex-wrap: wrap;">
                     <div>
-                        <h3 id="preview-title" style="margin-bottom: 2px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">Document Preview</h3>
+                        <h3 id="preview-title" style="margin-bottom: 4px; font-size: 14px;">Document Preview</h3>
                         <div id="preview-bates" class="mono" style="font-size: 11px; color: var(--text-muted);"></div>
                     </div>
                     <button class="btn" onclick="downloadCurrent()"><i class="ph ph-download-simple"></i> <span class="mobile-hide">Download File</span></button>
@@ -608,7 +609,7 @@
                         <textarea id="review-notes" class="comment-box" placeholder="Add legal observations, materiality notes, or redaction instructions..." oninput="saveReviewNotes()"></textarea>
                     </div>
 
-                    <div style="margin-top: auto; padding-top: 20px; padding-bottom: 30px;">
+                    <div style="margin-top: auto; padding-top: 20px; padding-bottom: 30px">
                         <button class="btn btn-brand" style="width: 100%; justify-content: center; padding: 12px;" onclick="closeModal('preview-modal')">
                             <i class="ph ph-check-circle"></i> Complete Legal Review
                         </button>
@@ -1125,7 +1126,7 @@
 
             document.getElementById('matter-list').innerHTML = state.matters.map(m => `
                 <div class="sidebar-item ${state.selectedMatterId === m.id ? 'active' : ''}" onclick="selectMatter('${m.id}')">
-                    <i class="ph-fill ph-briefcase"></i> <span class="mobile-hide">${m.name}</span><span style="display:none" class="mobile-show">${m.name.substring(0,3)}..</span>
+                    <i class="ph-fill ph-briefcase"></i> ${m.name}
                 </div>
             `).join('');
 
@@ -1172,7 +1173,7 @@
             };
 
             const isSearching = searchStr || filters.type || filters.dateStart || filters.dateEnd || filters.uploader;
-            document.getElementById('search-mode-indicator').innerText = isSearching ? `MODE: GLOBAL INTELLIGENCE SEARCH` : `MODE: BROWSE`;
+            document.getElementById('search-mode-indicator').innerText = isSearching ? `MODE: GLOBAL SEARCH` : `MODE: BROWSE`;
             
             let displayItems = isSearching ? recursiveSearch(matter.files, searchStr, filters) : [...currentItems];
             
@@ -1226,24 +1227,24 @@
                         <div class="analysis-grid">
                             <div>
                                 <div class="meta-label">Consolidated OCR / Transcript</div>
-                                <div class="analysis-ocr">${i.ocrText || 'Extraction required. Use "Run Intel Extraction" in Preview.'}</div>
+                                <div class="analysis-ocr">${i.ocrText || 'Extraction required.'}</div>
                             </div>
                             <div>
                                 <div class="meta-label">AI Themes & Keywords</div>
                                 <div style="margin-top:5px;">${themes || 'None detected'}</div>
                                 
-                                <div class="meta-label" style="margin-top:15px;">Key Entities (Emails/Identifiers)</div>
+                                <div class="meta-label" style="margin-top:15px;">Key Entities</div>
                                 <div style="margin-top:5px;">${entities || 'None detected'}</div>
 
                                 <div class="meta-label" style="margin-top:15px;">Reviewer Context</div>
-                                <div style="font-size:11px; color:var(--text-main); font-style:italic;">${i.reviewNotes || 'No notes added.'}</div>
+                                <div style="font-size:11px; color:var(--text-main); font-style:italic;">${i.reviewNotes || 'No notes.'}</div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
             
-            document.getElementById('analysis-stat-count').innerText = `Report generated for ${allFiles.length} artifacts in matter ${matter.name}`;
+            document.getElementById('analysis-stat-count').innerText = `Report generated for ${allFiles.length} artifacts.`;
         }
 
         function renderList(items, isSearching) {
