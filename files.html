@@ -1,3 +1,5 @@
+--- START OF FILE Paste June 07, 2026 - 5:38PM ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -310,7 +312,6 @@
                 padding: 0 10px;
                 gap: 5px;
             }
-            /* Hide the Investigation List and Headers in the bottom strip for cleaner UX */
             .sidebar > div:first-child, 
             .sidebar #matter-list,
             .sidebar > div:nth-child(3) { display: none; } 
@@ -331,7 +332,6 @@
 
             .explorer-container { height: 100%; }
             
-            /* Responsive toolbar buttons */
             nav.toolbar { 
                 padding: 0 10px; 
                 gap: 5px; 
@@ -340,21 +340,54 @@
             }
             .search-input { width: 110px; }
             
-            /* Simplified Table for Small Screens */
             th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5),
             td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5) { display: none; }
             th:nth-child(1), td:nth-child(1) { width: 100% !important; }
 
             .breadcrumb-bar { font-size: 10px; }
 
-            /* Preview Modal Fullscreen */
+            /* Preview Modal Fullscreen for Mobile */
             #preview-modal .modal { 
                 width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; 
                 margin: 0; border-radius: 0; padding: 10px;
             }
-            .preview-container { flex-direction: column; height: calc(100% - 60px); overflow-y: auto; }
-            .preview-content { height: 300px; flex: none; width: 100%; }
-            .review-panel { flex: none; border: none; padding: 10px 0; border-top: 1px solid var(--border); }
+            .preview-container { 
+                flex-direction: column; 
+                height: calc(100% - 60px); 
+                overflow-y: auto; 
+                -webkit-overflow-scrolling: touch; /* Momentum scrolling for mobile container */
+            }
+            
+            /* --- CRITICAL: MOBILE PREVIEW SCROLL IMPROVEMENTS --- */
+            .preview-content { 
+                height: 50vh; /* Occupy half the vertical screen on mobile */
+                flex: none; 
+                width: 100%; 
+                overflow: auto; /* Allow the actual document content to scroll */
+                -webkit-overflow-scrolling: touch;
+                background: #f1f5f9;
+                border-radius: 6px;
+                display: block; /* Change from flex to block to allow natural element layout */
+            }
+            
+            /* Ensure text content wraps and scrolls nicely on mobile */
+            .preview-content pre {
+                padding: 15px !important;
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+                font-size: 12px !important;
+                background: white;
+            }
+            
+            /* Ensure images don't break the scroll container */
+            .preview-content img {
+                max-width: 100% !important;
+                height: auto !important;
+                display: block;
+                margin: 0 auto;
+            }
+
+            .review-panel { flex: none; border: none; padding: 10px 0; border-top: 1px solid var(--border); overflow-y: visible; }
             
             .mobile-hide { display: none !important; }
         }
@@ -583,7 +616,7 @@
                         <textarea id="review-notes" class="comment-box" placeholder="Add legal observations, materiality notes, or redaction instructions..." oninput="saveReviewNotes()"></textarea>
                     </div>
 
-                    <div style="margin-top: auto; padding-top: 20px; padding-bottom: 40px;">
+                    <div style="margin-top: auto; padding-top: 20px; padding-bottom: 50px;">
                         <button class="btn btn-brand" style="width: 100%; justify-content: center; padding: 12px;" onclick="closeModal('preview-modal')">
                             <i class="ph ph-check-circle"></i> Complete Legal Review
                         </button>
@@ -1490,14 +1523,24 @@
             menu.innerHTML = `
                 <div class="ctx-item" onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> New Folder</div>
                 <div class="ctx-item" onclick="triggerUpload()"><i class="ph ph-file-arrow-up"></i> Ingest Evidence</div>
-                <div class="ctx-item" onclick="pasteItem()"><i class="ph ph-clipboard-text"></i> Paste</div>
+                <div class="ctx-item" onclick="onPaste()"><i class="ph ph-clipboard-text"></i> Paste</div>
             `;
         }
 
         function undo() { if(!undoStack.length) return; redoStack.push(JSON.stringify(state.matters)); state.matters = JSON.parse(undoStack.pop()); save(); }
         function redo() { if(!redoStack.length) return; undoStack.push(JSON.stringify(state.matters)); state.matters = JSON.parse(redoStack.pop()); save(); }
         function copySelection(mode) { const items = getCurrentDir().filter(i => state.selectedIds.includes(i.id)); state.clipboard = { action: mode, items: JSON.parse(JSON.stringify(items)) }; save(); }
-        function pasteItem() { if(!state.clipboard) return; pushHistory(); const dir = getCurrentDir(); state.clipboard.items.forEach(i => dir.push({...i, id: 'CPY-'+Date.now()+Math.random(), legalHold: false})); save(); }
+        
+        function onPaste() { 
+            if(!state.clipboard) return; 
+            pushHistory(); 
+            const dir = getCurrentDir(); 
+            state.clipboard.items.forEach(i => {
+                dir.push({...i, id: 'CPY-'+Date.now()+Math.random(), legalHold: false, bates: i.bates + "-COPY"});
+            }); 
+            save(); 
+        }
+
         function openRenameModal() { const item = getCurrentDir().find(i => state.selectedIds.includes(i.id)); if(item.legalHold) return alert("Hold active."); document.getElementById('rename-input').value = item.name; openModal('rename-modal'); }
         function applyRename() { const name = document.getElementById('rename-input').value; const item = getCurrentDir().find(i => state.selectedIds.includes(i.id)); if(name && item) { pushHistory(); item.name = name; closeModal('rename-modal'); save(); } }
 
