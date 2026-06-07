@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,7 +39,8 @@
         .logo { font-weight: 800; display: flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: 1px; }
         .logo span { color: var(--primary); }
 
-        nav.toolbar { background: white; border-bottom: 1px solid var(--border); height: 55px; display: flex; align-items: center; padding: 0 20px; gap: 8px; flex-shrink: 0; position: relative; }
+        nav.toolbar { background: white; border-bottom: 1px solid var(--border); height: 55px; display: flex; align-items: center; padding: 0 20px; gap: 8px; flex-shrink: 0; position: relative; overflow-x: auto; scrollbar-width: none; }
+        nav.toolbar::-webkit-scrollbar { display: none; }
         
         main { flex: 1; display: grid; grid-template-columns: 260px 1fr 320px; overflow: hidden; }
 
@@ -52,7 +51,7 @@
         .sidebar-item.active { background: var(--selection); color: var(--primary); border-right: 3px solid var(--primary); }
 
         /* --- EXPLORER --- */
-        .explorer-container { background: white; display: flex; flex-direction: column; position: relative; }
+        .explorer-container { background: white; display: flex; flex-direction: column; position: relative; min-width: 0; }
         .breadcrumb-bar { height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; font-size: 12px; background: #fafafa; }
         .breadcrumb-item { color: var(--text-muted); cursor: pointer; font-weight: 500; }
         .breadcrumb-item:hover { color: var(--primary); text-decoration: underline; }
@@ -133,7 +132,7 @@
         .copy-trigger:hover { opacity: 1; }
 
         /* --- BUTTONS & MODALS --- */
-        .btn { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.1s; color: var(--text-main); text-decoration: none; }
+        .btn { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.1s; color: var(--text-main); text-decoration: none; flex-shrink: 0; }
         .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-brand { background: var(--primary); color: white; border-color: var(--primary); }
@@ -151,22 +150,47 @@
         .ctx-item.hold-item:hover { background: var(--hold-color); }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(2px); }
-        .modal { background: white; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .modal { background: white; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-width: 95vw; }
         .modal h3 { margin-bottom: 15px; font-size: 18px; color: var(--top-bg); }
         .modal input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
 
         #hex-dump { font-family: 'JetBrains Mono', monospace; font-size: 10px; background: #0f172a; color: #4ade80; padding: 12px; border-radius: 4px; line-height: 1.5; white-space: pre-wrap; overflow-x: hidden; }
         
-        .status-bar { height: 28px; background: #f8fafc; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+        .status-bar { height: 28px; background: #f8fafc; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; font-size: 11px; font-weight: 500; color: var(--text-muted); flex-shrink: 0; }
         
         .hold-badge { color: var(--hold-color); margin-left: 5px; font-size: 14px; vertical-align: middle; }
 
         .ai-priority-badge { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; background: #ede9fe; color: var(--hold-color); padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
 
-        @media (max-width: 900px) {
-            body { overflow-y: auto; height: auto; min-height: 100vh; }
-            main { display: flex; flex-direction: column; }
-            .preview-container { flex-direction: column; }
+        /* --- MOBILE IMPROVEMENTS --- */
+        @media (max-width: 1024px) {
+            main { grid-template-columns: 200px 1fr; }
+            .inspector { display: none; } /* On tablets, hide inspector unless toggled or keep standard */
+        }
+
+        @media (max-width: 768px) {
+            body { overflow: auto; }
+            header .logo span { display: none; }
+            main { display: flex; flex-direction: column; overflow: visible; height: auto; }
+            .sidebar { order: 2; border-right: none; border-bottom: 1px solid var(--border); }
+            .explorer-container { order: 1; height: 60vh; }
+            .inspector { order: 3; border-left: none; height: auto; padding-bottom: 80px; display: block; }
+            
+            nav.toolbar { padding: 0 10px; }
+            .search-input { width: 140px; }
+            
+            /* Hide non-essential columns on mobile */
+            th:nth-child(3), th:nth-child(4), th:nth-child(5),
+            td:nth-child(3), td:nth-child(4), td:nth-child(5) { display: none; }
+            th:nth-child(1) { width: 70% !important; }
+            th:nth-child(2) { width: 30% !important; }
+
+            .preview-modal .modal { height: 95vh; width: 98vw; }
+            .preview-container { flex-direction: column; overflow-y: auto; }
+            .preview-content { min-height: 300px; flex: none; }
+            .review-panel { flex: none; height: auto; overflow: visible; }
+            
+            .mobile-hide { display: none; }
         }
     </style>
 </head>
@@ -178,34 +202,34 @@
     </header>
 
     <nav class="toolbar">
-        <a href="index.html" class="btn"><i class="ph ph-chart-line"></i> Dashboard</a>
-        <a href="matters.html" class="btn"><i class="ph ph-briefcase"></i> Case Management</a>
-        <div style="width:1px; height:20px; background:var(--border); margin:0 10px"></div>
+        <a href="index.html" class="btn" title="Dashboard"><i class="ph ph-chart-line"></i> <span class="mobile-hide">Dashboard</span></a>
+        <a href="matters.html" class="btn" title="Cases"><i class="ph ph-briefcase"></i> <span class="mobile-hide">Cases</span></a>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 5px; flex-shrink:0;"></div>
 
         <button class="btn" id="btn-back" onclick="navigateBack()" disabled><i class="ph ph-arrow-left"></i></button>
         
         <button class="btn" onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)"><i class="ph ph-arrow-u-up-left"></i></button>
         <button class="btn" onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Y)"><i class="ph ph-arrow-u-up-right"></i></button>
         
-        <div style="width:1px; height:20px; background:var(--border); margin:0 5px"></div>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 5px; flex-shrink:0;"></div>
         
-        <button class="btn btn-brand action-btn" disabled onclick="triggerUpload()"><i class="ph ph-file-arrow-up"></i> Upload</button>
-		<button class="btn action-btn" disabled onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> New Folder</button>
+        <button class="btn btn-brand action-btn" disabled onclick="triggerUpload()"><i class="ph ph-file-arrow-up"></i> Ingest</button>
+		<button class="btn action-btn" disabled onclick="openModal('folder-modal')"><i class="ph ph-folder-plus"></i> Folder</button>
         
-        <button class="btn action-btn" disabled onclick="exportManifest()"><i class="ph ph-file-csv"></i> Create Report</button>
+        <button class="btn action-btn" disabled onclick="exportManifest()"><i class="ph ph-file-csv"></i> Report</button>
         
-        <div style="width:1px; height:20px; background:var(--border); margin:0 5px"></div>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 5px; flex-shrink:0;"></div>
         
-        <button class="btn" onclick="copySelection('copy')" id="copy-btn" disabled><i class="ph ph-copy"></i> Copy</button>
-        <button class="btn" onclick="pasteItem()" id="paste-btn" disabled><i class="ph ph-clipboard-text"></i> Paste</button>
-        <button class="btn" onclick="downloadSelected()" id="download-btn" disabled><i class="ph ph-download-simple"></i> Download</button>
-        <button class="btn" onclick="deleteSelection()" id="delete-btn" disabled><i class="ph ph-trash" style="color:var(--rose)"></i></button>
+        <button class="btn" onclick="copySelection('copy')" id="copy-btn" disabled title="Copy"><i class="ph ph-copy"></i></button>
+        <button class="btn" onclick="pasteItem()" id="paste-btn" disabled title="Paste"><i class="ph ph-clipboard-text"></i></button>
+        <button class="btn" onclick="downloadSelected()" id="download-btn" disabled title="Download"><i class="ph ph-download-simple"></i></button>
+        <button class="btn" onclick="deleteSelection()" id="delete-btn" disabled title="Delete"><i class="ph ph-trash" style="color:var(--rose)"></i></button>
 
-        <div style="flex:1"></div>
+        <div style="flex:1; min-width: 20px;"></div>
         
-        <div style="position:relative">
+        <div style="position:relative; flex-shrink:0;">
             <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:10px; color:var(--text-muted)"></i>
-            <input type="text" class="search-input" id="search-bar" placeholder="Full-text intelligence search..." oninput="render()">
+            <input type="text" class="search-input" id="search-bar" placeholder="Intelligence search..." oninput="render()">
             <button class="btn" style="position:absolute; right:5px; top:5px; border:none; padding:4px" onclick="toggleFilters(event)"><i class="ph ph-funnel"></i></button>
         </div>
 
@@ -237,7 +261,7 @@
             <button class="btn" style="width:100%; justify-content:center; margin-top:5px" onclick="resetFilters()">Reset Filters</button>
         </div>
         
-        <div style="display:flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 10px;">
+        <div style="display:flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 10px; flex-shrink:0;">
             <button class="btn" onclick="setView('list')" style="border:none; border-radius:0"><i class="ph ph-list"></i></button>
             <button class="btn" onclick="setView('grid')" style="border:none; border-radius:0"><i class="ph ph-squares-four"></i></button>
         </div>
@@ -322,19 +346,19 @@
     <!-- ENHANCED PREVIEW & REVIEW MODAL -->
     <div id="preview-modal" class="modal-overlay" onclick="closeModal('preview-modal')">
         <div class="modal" style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <div style="display:flex; align-items:center; gap:20px">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
+                <div style="display:flex; align-items:center; gap:20px; flex-wrap: wrap;">
                     <div>
-                        <h3 id="preview-title" style="margin-bottom: 4px;">Document Preview</h3>
+                        <h3 id="preview-title" style="margin-bottom: 4px; font-size: 14px;">Document Preview</h3>
                         <div id="preview-bates" class="mono" style="font-size: 11px; color: var(--text-muted);"></div>
                     </div>
-                    <button class="btn" onclick="downloadCurrent()"><i class="ph ph-download-simple"></i> Download File</button>
+                    <button class="btn" onclick="downloadCurrent()"><i class="ph ph-download-simple"></i> <span class="mobile-hide">Download File</span></button>
                     <!-- OCR Progress Indicator -->
                     <div id="ocr-status" style="font-size: 11px; font-weight: 800; color: var(--primary); display:none;">
-                        <i class="ph ph-cpu ph-spin"></i> EXTRACTING TEXT...
+                        <i class="ph ph-cpu ph-spin"></i> <span class="mobile-hide">EXTRACTING...</span>
                     </div>
                 </div>
-                <button class="btn" onclick="closeModal('preview-modal')"><i class="ph ph-x"></i> Close Review</button>
+                <button class="btn" onclick="closeModal('preview-modal')"><i class="ph ph-x"></i> <span class="mobile-hide">Close Review</span></button>
             </div>
             
             <div class="preview-container">
@@ -375,7 +399,7 @@
                         <textarea id="review-notes" class="comment-box" placeholder="Add legal observations, materiality notes, or redaction instructions..." oninput="saveReviewNotes()"></textarea>
                     </div>
 
-                    <div style="margin-top: auto;">
+                    <div style="margin-top: auto; padding-top: 20px;">
                         <button class="btn btn-brand" style="width: 100%; justify-content: center; padding: 12px;" onclick="closeModal('preview-modal')">
                             <i class="ph ph-check-circle"></i> Complete Legal Review
                         </button>
