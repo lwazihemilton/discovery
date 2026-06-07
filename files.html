@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     
     <style>
         :root {
@@ -37,7 +41,7 @@
         .logo { font-weight: 800; display: flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: 1px; }
         .logo span { color: var(--primary); }
 
-        nav.toolbar { background: white; border-bottom: 1px solid var(--border); height: 55px; display: flex; align-items: center; padding: 0 20px; gap: 8px; flex-shrink: 0; }
+        nav.toolbar { background: white; border-bottom: 1px solid var(--border); height: 55px; display: flex; align-items: center; padding: 0 20px; gap: 8px; flex-shrink: 0; position: relative; }
         
         main { flex: 1; display: grid; grid-template-columns: 260px 1fr 320px; overflow: hidden; }
 
@@ -75,6 +79,10 @@
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .grid-item .status-dot { position: absolute; top: 10px; right: 10px; width: 10px; height: 10px; }
 
+        /* --- SEARCH SNIPPETS --- */
+        .search-hit { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic; display: block; overflow: hidden; text-overflow: ellipsis; }
+        .search-hit b { color: var(--primary); background: #fef9c3; }
+
         /* --- INSPECTOR & PREVIEW --- */
         .inspector { background: #f8fafc; border-left: 1px solid var(--border); padding: 20px; overflow-y: auto; }
         .inspector-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
@@ -100,17 +108,26 @@
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         }
         .preview-pane i { font-size: 80px; color: #94a3b8; }
-        .preview-overlay { 
-            position: absolute; 
-            bottom: 0; left: 0; right: 0; 
-            background: rgba(15, 23, 42, 0.8); 
-            color: white; 
-            padding: 8px 12px; 
-            font-size: 10px; 
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
+
+        /* --- REVIEW PANEL STYLES --- */
+        .preview-container { display: flex; width: 100%; height: 100%; gap: 20px; overflow: hidden; }
+        .preview-content { flex: 3; background: #e2e8f0; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); position: relative; }
+        .review-panel { flex: 1; background: white; border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; padding: 20px; gap: 20px; overflow-y: auto; }
+        .tag-group { display: flex; flex-direction: column; gap: 8px; }
+        .tag-btn { 
+            padding: 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; 
+            font-size: 12px; font-weight: 600; text-align: left; transition: 0.2s; background: #f8fafc; color: var(--text-main);
         }
+        .tag-btn:hover { border-color: var(--primary); }
+        .tag-btn.active[data-tag="responsive"] { background: var(--emerald); color: white; border-color: var(--emerald); }
+        .tag-btn.active[data-tag="non-responsive"] { background: var(--status-awaiting); color: white; border-color: var(--status-awaiting); }
+        .tag-btn.active[data-tag="privileged"] { background: var(--rose); color: white; border-color: var(--rose); }
+        .tag-btn.active[data-tag="confidential"] { background: var(--amber); color: white; border-color: var(--amber); }
+        
+        .tag-btn.active[data-tag="hot-doc"] { background: var(--hold-color); color: white; border-color: var(--hold-color); }
+        .tag-btn.active[data-tag="material"] { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .comment-box { width: 100%; height: 120px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 13px; resize: none; color: var(--text-main); }
 
         .copy-trigger { position: absolute; top: 10px; right: 10px; cursor: pointer; color: var(--primary); opacity: 0.5; transition: 0.2s; }
         .copy-trigger:hover { opacity: 1; }
@@ -123,6 +140,9 @@
         .btn-brand:hover:not(:disabled) { background: #1d4ed8; color: white; }
 
         .search-input { padding: 8px 12px 8px 35px; border: 1px solid var(--border); border-radius: 6px; width: 220px; font-size: 13px; }
+        .search-filters { position: absolute; top: 55px; right: 20px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 15px; display: none; z-index: 100; width: 300px; flex-direction: column; gap: 10px; }
+        .filter-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .filter-row { display: flex; flex-direction: column; gap: 5px; }
 
         #ctx-menu { position: fixed; background: white; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px; padding: 5px; z-index: 9999; display: none; min-width: 200px; }
         .ctx-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-radius: 4px; }
@@ -141,69 +161,16 @@
         
         .hold-badge { color: var(--hold-color); margin-left: 5px; font-size: 14px; vertical-align: middle; }
 
-        /* --- MOBILE VIEW ADDITIONS --- */
+        .ai-priority-badge { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; background: #ede9fe; color: var(--hold-color); padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+
         @media (max-width: 900px) {
             body { overflow-y: auto; height: auto; min-height: 100vh; }
-            header { padding: 0 10px; }
-            .logo span { display: none; }
-            #session-tag { font-size: 9px; }
-
-            nav.toolbar { 
-                height: auto; 
-                padding: 10px; 
-                flex-wrap: nowrap; 
-                overflow-x: auto; 
-                -webkit-overflow-scrolling: touch;
-                gap: 10px;
-            }
-            nav.toolbar::-webkit-scrollbar { display: none; }
-            .toolbar .btn { flex-shrink: 0; }
-            .search-input { width: 140px; }
-
-            main { 
-                display: flex; 
-                flex-direction: column; 
-                overflow: visible; 
-                height: auto;
-            }
-
-            .sidebar { 
-                order: 2; 
-                border-right: none; 
-                border-top: 1px solid var(--border); 
-                max-height: 300px; 
-                overflow-y: auto; 
-            }
-
-            .explorer-container { 
-                order: 1; 
-                height: 500px; 
-                border-bottom: 1px solid var(--border); 
-            }
-
-            .inspector { 
-                order: 3; 
-                border-left: none; 
-                border-top: 1px solid var(--border); 
-                height: auto; 
-                padding: 15px;
-            }
-
-            .scroll-area { overflow-x: auto; }
-            table { min-width: 600px; } /* Ensure table remains readable */
-            
-            .modal { width: 95%; margin: 10px; }
-            
-            .status-bar { 
-                position: sticky; 
-                bottom: 0; 
-                z-index: 100;
-                background: white;
-            }
+            main { display: flex; flex-direction: column; }
+            .preview-container { flex-direction: column; }
         }
     </style>
 </head>
-<body onclick="hideContextMenus()" onkeydown="handleGlobalKeys(event)">
+<body onclick="hideContextMenus(); closeFilters(event)" onkeydown="handleGlobalKeys(event)">
 
     <header>
         <div class="logo"><i class="ph-fill ph-shield-check"></i> LWAZI <span>Intelligence OS</span></div>
@@ -231,13 +198,43 @@
         
         <button class="btn" onclick="copySelection('copy')" id="copy-btn" disabled><i class="ph ph-copy"></i> Copy</button>
         <button class="btn" onclick="pasteItem()" id="paste-btn" disabled><i class="ph ph-clipboard-text"></i> Paste</button>
+        <button class="btn" onclick="downloadSelected()" id="download-btn" disabled><i class="ph ph-download-simple"></i> Download</button>
         <button class="btn" onclick="deleteSelection()" id="delete-btn" disabled><i class="ph ph-trash" style="color:var(--rose)"></i></button>
 
         <div style="flex:1"></div>
         
         <div style="position:relative">
             <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:10px; color:var(--text-muted)"></i>
-            <input type="text" class="search-input" id="search-bar" placeholder="Filter..." oninput="render()">
+            <input type="text" class="search-input" id="search-bar" placeholder="Full-text intelligence search..." oninput="render()">
+            <button class="btn" style="position:absolute; right:5px; top:5px; border:none; padding:4px" onclick="toggleFilters(event)"><i class="ph ph-funnel"></i></button>
+        </div>
+
+        <div class="search-filters" id="search-filters" onclick="event.stopPropagation()">
+            <div class="filter-row">
+                <span class="filter-label">Artifact Type</span>
+                <select id="filter-type" class="status-select" onchange="render()">
+                    <option value="">All Types</option>
+                    <option value="image">Images</option>
+                    <option value="pdf">PDF Documents</option>
+                    <option value="text">Text / Source</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <span class="filter-label">Date Range</span>
+                <div style="display:flex; gap:5px">
+                    <input type="date" id="filter-date-start" class="status-select" style="padding:4px" onchange="render()">
+                    <input type="date" id="filter-date-end" class="status-select" style="padding:4px" onchange="render()">
+                </div>
+            </div>
+            <div class="filter-row">
+                <span class="filter-label">Uploader / Node</span>
+                <select id="filter-uploader" class="status-select" onchange="render()">
+                    <option value="">All Uploaders</option>
+                    <option value="NODE_882">NODE_882 (Current)</option>
+                    <option value="SYSTEM">System Ingest</option>
+                </select>
+            </div>
+            <button class="btn" style="width:100%; justify-content:center; margin-top:5px" onclick="resetFilters()">Reset Filters</button>
         </div>
         
         <div style="display:flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 10px;">
@@ -279,7 +276,8 @@
             <div class="status-bar">
                 <div id="stat-count">0 Artifacts</div>
                 <div style="margin-left: auto; display: flex; gap: 20px;">
-                    <span class="mobile-hide">MODE: SECURE_INGEST</span>
+                    <span class="mobile-hide" id="search-mode-indicator">MODE: BROWSE</span>
+                    <span class="mobile-hide">INTELLIGENCE MODE: CAL_NAIVE_BAYES</span>
                 </div>
             </div>
         </section>
@@ -321,15 +319,68 @@
         </div>
     </div>
 
-    <!-- PREVIEW MODAL -->
+    <!-- ENHANCED PREVIEW & REVIEW MODAL -->
     <div id="preview-modal" class="modal-overlay" onclick="closeModal('preview-modal')">
-        <div class="modal" style="width: 90%; max-width: 1100px; height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+        <div class="modal" style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 id="preview-title">Document Preview</h3>
-                <button class="btn" onclick="closeModal('preview-modal')"><i class="ph ph-x"></i></button>
+                <div style="display:flex; align-items:center; gap:20px">
+                    <div>
+                        <h3 id="preview-title" style="margin-bottom: 4px;">Document Preview</h3>
+                        <div id="preview-bates" class="mono" style="font-size: 11px; color: var(--text-muted);"></div>
+                    </div>
+                    <button class="btn" onclick="downloadCurrent()"><i class="ph ph-download-simple"></i> Download File</button>
+                    <!-- OCR Progress Indicator -->
+                    <div id="ocr-status" style="font-size: 11px; font-weight: 800; color: var(--primary); display:none;">
+                        <i class="ph ph-cpu ph-spin"></i> EXTRACTING TEXT...
+                    </div>
+                </div>
+                <button class="btn" onclick="closeModal('preview-modal')"><i class="ph ph-x"></i> Close Review</button>
             </div>
-            <div id="preview-body" style="flex:1; background:#f1f5f9; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
-                <!-- Content injected here -->
+            
+            <div class="preview-container">
+                <div id="preview-body" class="preview-content">
+                    <!-- Content injected here -->
+                </div>
+
+                <div class="review-panel">
+                    <div class="inspector-title">Legal Review & Coding</div>
+                    
+                    <div class="tag-group">
+                        <div class="meta-label">Responsiveness</div>
+                        <button class="tag-btn" id="tag-responsive" data-tag="responsive" onclick="toggleReviewTag('responsive')">Responsive</button>
+                        <button class="tag-btn" id="tag-non-responsive" data-tag="non-responsive" onclick="toggleReviewTag('non-responsive')">Non-Responsive</button>
+                    </div>
+
+                    <div class="tag-group">
+                        <div class="meta-label">Privilege / Confidentiality</div>
+                        <button class="tag-btn" id="tag-privileged" data-tag="privileged" onclick="toggleReviewTag('privileged')">Attorney-Client Privilege</button>
+                        <button class="tag-btn" id="tag-confidential" data-tag="confidential" onclick="toggleReviewTag('confidential')">Confidential / AEO</button>
+                    </div>
+
+                    <!-- OCR SECTION -->
+                    <div class="tag-group" id="ocr-panel" style="display:none">
+                        <div class="meta-label">OCR Transcript (Visual Evidence)</div>
+                        <button class="btn" id="ocr-trigger-btn" onclick="runOCR()"><i class="ph ph-text-aa"></i> Run OCR Extraction</button>
+                        <textarea id="ocr-text" class="comment-box" style="height: 100px; background: #f1f5f9; font-size: 11px;" placeholder="Visual text will appear here after OCR..." oninput="saveOCRText()"></textarea>
+                    </div>
+
+                    <div class="tag-group">
+                        <div class="meta-label">Legal Purpose & Issues</div>
+                        <button class="tag-btn" id="tag-material" data-tag="material" onclick="toggleReviewTag('material')">Material to Case</button>
+                        <button class="tag-btn" id="tag-hot-doc" data-tag="hot-doc" onclick="toggleReviewTag('hot-doc')">Hot Document / Key Evidence</button>
+                    </div>
+
+                    <div class="tag-group">
+                        <div class="meta-label">Reviewer Notes</div>
+                        <textarea id="review-notes" class="comment-box" placeholder="Add legal observations, materiality notes, or redaction instructions..." oninput="saveReviewNotes()"></textarea>
+                    </div>
+
+                    <div style="margin-top: auto;">
+                        <button class="btn btn-brand" style="width: 100%; justify-content: center; padding: 12px;" onclick="closeModal('preview-modal')">
+                            <i class="ph ph-check-circle"></i> Complete Legal Review
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -337,6 +388,76 @@
     <input type="file" id="hidden-file-input" style="display:none" multiple onchange="handleFileUpload(event)">
 
     <script>
+        // --- CAL ALGORITHM (NAIVE BAYES) ---
+        class ForensicBrain {
+            constructor() {
+                this.vocabulary = new Set();
+                this.docCounts = { responsive: 0, nonResponsive: 0 };
+                this.wordCounts = { responsive: {}, nonResponsive: {} };
+            }
+            tokenize(text) {
+                if (!text) return [];
+                return text.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter(word => word.length > 2);
+            }
+            train(text, label) {
+                const words = this.tokenize(text);
+                const category = label === 'responsive' ? 'responsive' : 'nonResponsive';
+                this.docCounts[category]++;
+                words.forEach(word => {
+                    this.vocabulary.add(word);
+                    this.wordCounts[category][word] = (this.wordCounts[category][word] || 0) + 1;
+                });
+            }
+            predict(text) {
+                const words = this.tokenize(text);
+                if (this.docCounts.responsive === 0 && this.docCounts.nonResponsive === 0) return 0;
+                let logProbResp = Math.log((this.docCounts.responsive || 1) / (this.docCounts.responsive + this.docCounts.nonResponsive || 1));
+                let logProbNonResp = Math.log((this.docCounts.nonResponsive || 1) / (this.docCounts.responsive + this.docCounts.nonResponsive || 1));
+                words.forEach(word => {
+                    const countResp = (this.wordCounts.responsive[word] || 0) + 1;
+                    const countNonResp = (this.wordCounts.nonResponsive[word] || 0) + 1;
+                    logProbResp += Math.log(countResp / (this.docCounts.responsive + this.vocabulary.size));
+                    logProbNonResp += Math.log(countNonResp / (this.docCounts.nonResponsive + this.vocabulary.size));
+                });
+                const probResp = Math.exp(logProbResp);
+                const probNonResp = Math.exp(logProbNonResp);
+                return probResp / (probResp + probNonResp);
+            }
+        }
+
+        const LwaziBrain = new ForensicBrain();
+
+        function runInference() {
+            const matter = getActiveMatter();
+            if (!matter) return;
+            
+            // 1. Reset Brain
+            LwaziBrain.vocabulary = new Set();
+            LwaziBrain.docCounts = { responsive: 0, nonResponsive: 0 };
+            LwaziBrain.wordCounts = { responsive: {}, nonResponsive: {} };
+
+            // 2. Train on all coded items in current dir
+            const items = getCurrentDir();
+            items.forEach(i => {
+                if (i.reviewTags && (i.reviewTags.includes('responsive') || i.reviewTags.includes('non-responsive'))) {
+                    const label = i.reviewTags.includes('responsive') ? 'responsive' : 'non-responsive';
+                    // Enhanced Training: Include OCR text if available
+                    const corpus = i.name + " " + (i.reviewNotes || "") + " " + (i.ocrText || "");
+                    LwaziBrain.train(corpus, label);
+                }
+            });
+
+            // 3. Score all awaiting items
+            items.forEach(i => {
+                if (i.status === 'awaiting' || i.status === 'progress') {
+                    const corpus = i.name + " " + (i.reviewNotes || "") + " " + (i.ocrText || "");
+                    i.aiScore = LwaziBrain.predict(corpus);
+                } else {
+                    i.aiScore = 0;
+                }
+            });
+        }
+
         // --- DATA LAYER ---
         const DB_KEY = 'LWAZI_PRO_SYSTEM_SHARED';
         let state = JSON.parse(localStorage.getItem(DB_KEY)) || { matters: [], selectedMatterId: null };
@@ -349,6 +470,7 @@
         let undoStack = [];
         let redoStack = [];
         let draggedItems = [];
+        let currentReviewId = null;
 
         function pushHistory() {
             undoStack.push(JSON.stringify(state.matters));
@@ -373,6 +495,52 @@
                 if (folder) current = folder.children;
             }
             return current;
+        }
+
+        // --- INTELLIGENCE SEARCH LOGIC ---
+        function recursiveSearch(items, term, filters, currentPath = "") {
+            let results = [];
+            items.forEach(item => {
+                const path = currentPath + (item.type === 'folder' ? item.name + " / " : "");
+                let matches = true;
+                
+                // Full-Text & OCR Logic
+                const contentStr = `${item.name} ${item.ocrText || ""} ${item.reviewNotes || ""} ${item.bates || ""}`.toLowerCase();
+                if (term && !contentStr.includes(term.toLowerCase())) matches = false;
+
+                // Meta Filters
+                if (matches && filters.type && !item.type.includes(filters.type)) matches = false;
+                if (matches && filters.uploader && item.uploader !== filters.uploader && filters.uploader !== "NODE_882") matches = false; // Mocking NODE_882 as primary
+                if (matches && filters.dateStart && new Date(item.date) < new Date(filters.dateStart)) matches = false;
+                if (matches && filters.dateEnd && new Date(item.date) > new Date(filters.dateEnd)) matches = false;
+
+                if (matches && item.type !== 'folder') {
+                    // Contextual Snippet
+                    let snippet = "";
+                    if (term) {
+                        const idx = contentStr.indexOf(term.toLowerCase());
+                        const start = Math.max(0, idx - 40);
+                        const end = Math.min(contentStr.length, idx + term.length + 40);
+                        snippet = contentStr.substring(start, end).replace(new RegExp(term, 'gi'), (m) => `<b>${m}</b>`);
+                    }
+                    results.push({ ...item, path: path, snippet: snippet });
+                }
+
+                if (item.children) {
+                    results = results.concat(recursiveSearch(item.children, term, filters, path));
+                }
+            });
+            return results;
+        }
+
+        function toggleFilters(e) { e.stopPropagation(); const f = document.getElementById('search-filters'); f.style.display = f.style.display === 'flex' ? 'none' : 'flex'; }
+        function closeFilters() { document.getElementById('search-filters').style.display = 'none'; }
+        function resetFilters() {
+            document.getElementById('filter-type').value = "";
+            document.getElementById('filter-date-start').value = "";
+            document.getElementById('filter-date-end').value = "";
+            document.getElementById('filter-uploader').value = "";
+            render();
         }
 
         // --- UTILS ---
@@ -467,7 +635,6 @@
                 const batesNum = (matter.lastBates || 0) + 1;
                 const bates = `${matter.prefix}-${batesNum.toString().padStart(6, '0')}`;
                 
-                // Read content for "As Is" view
                 const content = await new Promise((resolve) => {
                     const reader = new FileReader();
                     reader.onload = (e) => resolve(e.target.result);
@@ -480,7 +647,7 @@
                     name: f.name, bates: bates, type: f.type || 'application/octet-stream',
                     size: (f.size / 1024).toFixed(2) + ' KB', date: new Date().toISOString(),
                     created: new Date().toISOString(), hash: hash, hex: hex, legalHold: false, status: 'awaiting',
-                    data: content // Store base64 content
+                    data: content, reviewTags: [], reviewNotes: "", aiScore: 0, ocrText: "", uploader: "NODE_882"
                 });
                 if(!matter.audit) matter.audit = [];
                 matter.audit.push({ date: new Date().toLocaleString(), msg: `Vault Ingest: ${f.name} (${bates})` });
@@ -497,7 +664,7 @@
             getCurrentDir().push({
                 id: 'FLD-' + Date.now(), name: name, type: 'folder', size: '--',
                 date: new Date().toISOString(), created: new Date().toISOString(),
-                children: [], hash: 'DIRECTORY', legalHold: false, status: 'awaiting'
+                children: [], hash: 'DIRECTORY', legalHold: false, status: 'awaiting', aiScore: 0, uploader: "NODE_882"
             });
             document.getElementById('folder-name-input').value = '';
             closeModal('folder-modal');
@@ -543,6 +710,26 @@
             save();
         }
 
+        function downloadItem(id) {
+            const dir = getCurrentDir();
+            const item = dir.find(i => i.id === id);
+            if (!item || item.type === 'folder' || !item.data) return;
+            const link = document.createElement('a');
+            link.href = item.data;
+            link.download = item.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadSelected() {
+            state.selectedIds.forEach(id => downloadItem(id));
+        }
+
+        function downloadCurrent() {
+            if (currentReviewId) downloadItem(currentReviewId);
+        }
+
         // --- NAVIGATION ---
         function setView(v) { state.viewMode = v; save(); }
         function setSort(k) { 
@@ -562,6 +749,8 @@
 
         // --- RENDERING ---
         function render() {
+            runInference(); // Run Intelligence pass
+
             document.getElementById('matter-list').innerHTML = state.matters.map(m => `
                 <div class="sidebar-item ${state.selectedMatterId === m.id ? 'active' : ''}" onclick="selectMatter('${m.id}')">
                     <i class="ph-fill ph-briefcase"></i> ${m.name}
@@ -574,6 +763,7 @@
             document.getElementById('redo-btn').disabled = redoStack.length === 0;
             document.getElementById('copy-btn').disabled = state.selectedIds.length === 0;
             document.getElementById('delete-btn').disabled = state.selectedIds.length === 0;
+            document.getElementById('download-btn').disabled = state.selectedIds.length === 0;
             document.getElementById('paste-btn').disabled = !state.clipboard;
             document.getElementById('btn-back').disabled = state.path.length === 0;
 
@@ -583,18 +773,26 @@
             }
 
             let bc = `<span class="breadcrumb-item" onclick="state.path=[];save()">${matter.name}</span>`;
-            let current = matter.files;
+            let currentItems = matter.files;
             state.path.forEach((id, idx) => {
-                const f = current.find(i => i.id === id);
-                if(f) { bc += ` / <span class="breadcrumb-item" onclick="state.path=state.path.slice(0,${idx+1});save()">${f.name}</span>`; current = f.children; }
+                const f = currentItems.find(i => i.id === id);
+                if(f) { bc += ` / <span class="breadcrumb-item" onclick="state.path=state.path.slice(0,${idx+1});save()">${f.name}</span>`; currentItems = f.children; }
             });
             document.getElementById('breadcrumb').innerHTML = bc;
 
-            let items = getCurrentDir();
-            const search = document.getElementById('search-bar').value.toLowerCase();
-            if (search) items = items.filter(i => i.name.toLowerCase().includes(search));
+            const searchStr = document.getElementById('search-bar').value;
+            const filters = {
+                type: document.getElementById('filter-type').value,
+                dateStart: document.getElementById('filter-date-start').value,
+                dateEnd: document.getElementById('filter-date-end').value,
+                uploader: document.getElementById('filter-uploader').value
+            };
+
+            const isSearching = searchStr || filters.type || filters.dateStart || filters.dateEnd || filters.uploader;
+            document.getElementById('search-mode-indicator').innerText = isSearching ? `MODE: GLOBAL INTELLIGENCE SEARCH` : `MODE: BROWSE`;
             
-            let displayItems = [...items];
+            let displayItems = isSearching ? recursiveSearch(matter.files, searchStr, filters) : [...currentItems];
+            
             displayItems.sort((a,b) => {
                 let vA = a[state.sort.key] || '', vB = b[state.sort.key] || '';
                 if (vA < vB) return state.sort.asc ? -1 : 1;
@@ -607,7 +805,7 @@
             if (state.viewMode === 'list') {
                 document.getElementById('explorer-table').style.display = 'table';
                 document.getElementById('grid-container').style.display = 'none';
-                renderList(displayItems);
+                renderList(displayItems, isSearching);
             } else {
                 document.getElementById('explorer-table').style.display = 'none';
                 document.getElementById('grid-container').style.display = 'grid';
@@ -616,8 +814,13 @@
             updateInspector();
         }
 
-        function renderList(items) {
-            document.getElementById('explorer-body').innerHTML = items.map(i => `
+        function renderList(items, isSearching) {
+            document.getElementById('explorer-body').innerHTML = items.map(i => {
+                const aiBadge = (i.aiScore > 0.6) ? `<span class="ai-priority-badge">AI SCORE: ${Math.round(i.aiScore * 100)}%</span>` : '';
+                const locInfo = isSearching ? `<div class="search-hit" style="color:var(--primary); font-weight:700">PATH: ${i.path || "Root"}</div>` : '';
+                const contextSnippet = i.snippet ? `<div class="search-hit">...${i.snippet}...</div>` : '';
+
+                return `
                 <tr class="${state.selectedIds.includes(i.id) ? 'selected' : ''}" 
                     draggable="true" ondragstart="onDragStart(event, '${i.id}')"
                     ondragover="onDragOverItem(event, '${i.id}')"
@@ -628,7 +831,9 @@
                     oncontextmenu="handleItemContext(event, '${i.id}')">
                     <td>
                         <i class="${i.type==='folder'?'ph-fill ph-folder':'ph ph-file-text'}" style="color:${i.type==='folder'?'var(--amber)':'var(--primary)'}; margin-right:8px"></i> 
-                        ${i.name} ${i.legalHold ? '<i class="ph-fill ph-scales hold-badge"></i>' : ''}
+                        ${i.name} ${i.legalHold ? '<i class="ph-fill ph-scales hold-badge"></i>' : ''} ${aiBadge}
+                        ${locInfo}
+                        ${contextSnippet}
                     </td>
                     <td>
                         <span class="status-dot" style="background:var(--status-${i.status || 'awaiting'})"></span>
@@ -638,11 +843,13 @@
                     <td>${i.size}</td>
                     <td>${i.type === 'folder' ? 'Directory' : i.type.split('/')[1]?.toUpperCase() || 'DATA'}</td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         function renderGrid(items) {
-            document.getElementById('grid-container').innerHTML = items.map(i => `
+            document.getElementById('grid-container').innerHTML = items.map(i => {
+                const aiBadge = (i.aiScore > 0.6) ? `<div class="ai-priority-badge" style="margin:5px 0 0 0">AI: ${Math.round(i.aiScore * 100)}%</div>` : '';
+                return `
                 <div class="grid-item ${state.selectedIds.includes(i.id) ? 'selected' : ''}" 
                      draggable="true" ondragstart="onDragStart(event, '${i.id}')"
                      ondragover="onDragOverItem(event, '${i.id}')"
@@ -654,43 +861,39 @@
                     <span class="status-dot" style="background:var(--status-${i.status || 'awaiting'})"></span>
                     <i class="${i.type==='folder'?'ph-fill ph-folder':'ph ph-file-text'}" style="color:${i.type==='folder'?'var(--amber)':'var(--primary)'}"></i>
                     <span>${i.name} ${i.legalHold ? '<br>⚖️' : ''}</span>
+                    ${aiBadge}
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function updateInspector() {
             const content = document.getElementById('inspector-content');
             const hexSect = document.getElementById('hex-section');
-            const items = getCurrentDir().filter(i => state.selectedIds.includes(i.id));
-            const item = items[0];
+            const matter = getActiveMatter();
+            if (!matter) return;
+            
+            // Search all items in matter to find selected if it's not in the current view
+            const findItem = (arr, id) => {
+                for(let item of arr) {
+                    if(item.id === id) return item;
+                    if(item.children) { let found = findItem(item.children, id); if(found) return found; }
+                }
+            };
+            
+            const selectedItems = state.selectedIds.map(id => findItem(matter.files, id)).filter(Boolean);
+            const item = selectedItems[0];
 
-            if (items.length > 1) {
+            if (selectedItems.length > 1) {
                 content.innerHTML = `
                     <div style="text-align:center; padding: 20px;">
                         <i class="ph ph-files" style="font-size:48px; color:var(--text-muted); opacity:0.5"></i>
-                        <p style="font-size:13px; font-weight:700; margin-top:10px">${items.length} Artifacts Selected</p>
-                    </div>
-                    <div class="meta-group">
-                        <div class="meta-label">Batch Update Status</div>
-                        <select class="status-select" onchange="updateStatus(this.value)">
-                            <option value="" disabled selected>Change status for all...</option>
-                            <option value="awaiting">Awaiting Review</option>
-                            <option value="progress">Review in Progress</option>
-                            <option value="complete">Review Complete</option>
-                        </select>
+                        <p style="font-size:13px; font-weight:700; margin-top:10px">${selectedItems.length} Artifacts Selected</p>
                     </div>
                 `;
                 hexSect.style.display = 'none';
             } else if (item) {
-                let previewHtml = '';
-                const type = item.type || '';
-                if (type === 'folder') previewHtml = `<div class="preview-pane"><i class="ph-fill ph-folder" style="color:var(--amber)"></i></div>`;
-                else if (type.startsWith('image/')) previewHtml = `<div class="preview-pane"><img src="${item.data}" style="max-width:100%; max-height:100%; object-fit:contain"></div>`;
-                else if (type.includes('pdf')) previewHtml = `<div class="preview-pane"><i class="ph-fill ph-file-pdf" style="color:var(--rose)"></i></div>`;
-                else previewHtml = `<div class="preview-pane"><i class="ph-fill ph-file-text"></i></div>`;
-
+                const aiVal = item.aiScore ? `${Math.round(item.aiScore * 100)}% Match` : 'N/A';
                 content.innerHTML = `
-                    ${previewHtml}
                     <div class="meta-group">
                         <div class="meta-label">Review Status</div>
                         <select class="status-select" onchange="updateStatus(this.value)" ${item.legalHold ? 'disabled' : ''}>
@@ -699,13 +902,10 @@
                             <option value="complete" ${item.status === 'complete' ? 'selected' : ''}>Review Complete</option>
                         </select>
                     </div>
+                    <div class="meta-group"><div class="meta-label">AI Relevance Probability</div><div class="meta-value" style="color:var(--hold-color)">${aiVal}</div></div>
                     <div class="meta-group"><div class="meta-label">Artifact Name</div><div class="meta-value">${item.name}</div></div>
-                    <div class="meta-group"><div class="meta-label">Legal Hold</div><div class="meta-value" style="color:${item.legalHold ? 'var(--hold-color)' : 'inherit'}">${item.legalHold ? '⚖️ ACTIVE (IMMUTABLE)' : 'INACTIVE'}</div></div>
-                    <div class="meta-group">
-                        <div class="meta-label">SHA-256 Signature</div>
-                        <div class="meta-value mono" style="color:var(--emerald)">${item.hash}</div>
-                        <i class="ph ph-copy copy-trigger" onclick="copyToClipboard('${item.hash}')" title="Copy Hash"></i>
-                    </div>
+                    <div class="meta-group"><div class="meta-label">Ingested By</div><div class="meta-value mono">${item.uploader || 'NODE_882'}</div></div>
+                    <div class="meta-group"><div class="meta-label">SHA-256 Signature</div><div class="meta-value mono" style="color:var(--emerald)">${item.hash}</div></div>
                     <div class="meta-group"><div class="meta-label">Bates Identification</div><div class="meta-value mono">${item.bates || 'N/A'}</div></div>
                 `;
                 if (item.hex) { hexSect.style.display = 'block'; document.getElementById('hex-dump').innerText = item.hex; }
@@ -714,6 +914,141 @@
                 content.innerHTML = '<p style="font-size:12px; color:var(--text-muted)">Select evidence for forensic audit.</p>';
                 hexSect.style.display = 'none';
             }
+        }
+
+        // --- PREVIEW & REVIEW WORKSTATION ---
+        function openPreview(id) {
+            const matter = getActiveMatter();
+            const findItem = (arr, tid) => {
+                for(let item of arr) {
+                    if(item.id === tid) return item;
+                    if(item.children) { let found = findItem(item.children, tid); if(found) return found; }
+                }
+            };
+            const item = findItem(matter.files, id);
+            if(!item || item.type === 'folder') return;
+
+            currentReviewId = id;
+            document.getElementById('preview-title').innerText = item.name;
+            document.getElementById('preview-bates').innerText = `BATES ID: ${item.bates || 'UNASSIGNED'}`;
+            
+            loadReviewUI(item);
+
+            const body = document.getElementById('preview-body');
+            body.innerHTML = '';
+
+            const type = item.type;
+            if (type.startsWith('image/')) {
+                body.innerHTML = `<img id="preview-img-element" src="${item.data}" style="max-width:100%; max-height:100%; object-fit:contain">`;
+                document.getElementById('ocr-panel').style.display = 'flex';
+            } else {
+                document.getElementById('ocr-panel').style.display = 'none';
+                if (type === 'application/pdf') {
+                    body.innerHTML = `<embed src="${item.data}" type="application/pdf" width="100%" height="100%">`;
+                } else if (type.startsWith('text/') || type.includes('javascript') || type.includes('json') || type.includes('html')) {
+                    const text = atob(item.data.split(',')[1]);
+                    body.innerHTML = `<pre style="width:100%; height:100%; padding:30px; font-family:'JetBrains Mono'; font-size:13px; background:white; overflow:auto; white-space:pre-wrap;">${text}</pre>`;
+                } else {
+                    body.innerHTML = `<div style="text-align:center"><i class="ph ph-file-warning" style="font-size:64px; color:var(--text-muted)"></i><p>No Preview Available</p></div>`;
+                }
+            }
+            openModal('preview-modal');
+        }
+
+        // --- OCR LOGIC ---
+        async function runOCR() {
+            const matter = getActiveMatter();
+            const findItem = (arr, tid) => {
+                for(let item of arr) {
+                    if(item.id === tid) return item;
+                    if(item.children) { let found = findItem(item.children, tid); if(found) return found; }
+                }
+            };
+            const item = findItem(matter.files, currentReviewId);
+            if(!item || item.legalHold) return alert("Hold active or item invalid.");
+            
+            const btn = document.getElementById('ocr-trigger-btn');
+            const status = document.getElementById('ocr-status');
+            
+            btn.disabled = true;
+            status.style.display = 'block';
+
+            try {
+                const result = await Tesseract.recognize(item.data, 'eng');
+                item.ocrText = result.data.text;
+                document.getElementById('ocr-text').value = item.ocrText;
+                save();
+            } catch (err) {
+                console.error("OCR Failed", err);
+                alert("Intelligence Node Error: OCR engine failed to process the artifact.");
+            } finally {
+                btn.disabled = false;
+                status.style.display = 'none';
+            }
+        }
+
+        function saveOCRText() {
+            const matter = getActiveMatter();
+            const findItem = (arr, tid) => {
+                for(let item of arr) {
+                    if(item.id === tid) return item;
+                    if(item.children) { let found = findItem(item.children, tid); if(found) return found; }
+                }
+            };
+            const item = findItem(matter.files, currentReviewId);
+            if (item) { item.ocrText = document.getElementById('ocr-text').value; save(); }
+        }
+
+        function loadReviewUI(item) {
+            document.querySelectorAll('.tag-btn').forEach(btn => btn.classList.remove('active'));
+            if (item.reviewTags) {
+                item.reviewTags.forEach(tag => {
+                    const btn = document.getElementById(`tag-${tag}`);
+                    if (btn) btn.classList.add('active');
+                });
+            }
+            document.getElementById('review-notes').value = item.reviewNotes || "";
+            document.getElementById('ocr-text').value = item.ocrText || "";
+        }
+
+        function toggleReviewTag(tag) {
+            const matter = getActiveMatter();
+            const findItem = (arr, tid) => {
+                for(let item of arr) {
+                    if(item.id === tid) return item;
+                    if(item.children) { let found = findItem(item.children, tid); if(found) return found; }
+                }
+            };
+            const item = findItem(matter.files, currentReviewId);
+            if (!item) return;
+            if (item.legalHold) return alert("Operation Blocked: Item is under Legal Hold.");
+
+            if (!item.reviewTags) item.reviewTags = [];
+            const index = item.reviewTags.indexOf(tag);
+            
+            if (index > -1) {
+                item.reviewTags.splice(index, 1);
+            } else {
+                if (tag === 'responsive') item.reviewTags = item.reviewTags.filter(t => t !== 'non-responsive');
+                if (tag === 'non-responsive') item.reviewTags = item.reviewTags.filter(t => t !== 'responsive');
+                item.reviewTags.push(tag);
+            }
+            
+            item.status = 'complete'; 
+            loadReviewUI(item);
+            save();
+        }
+
+        function saveReviewNotes() {
+            const matter = getActiveMatter();
+            const findItem = (arr, tid) => {
+                for(let item of arr) {
+                    if(item.id === tid) return item;
+                    if(item.children) { let found = findItem(item.children, tid); if(found) return found; }
+                }
+            };
+            const item = findItem(matter.files, currentReviewId);
+            if (item) { item.reviewNotes = document.getElementById('review-notes').value; save(); }
         }
 
         // --- UI INTERACTION ---
@@ -730,11 +1065,19 @@
             e.preventDefault(); e.stopPropagation();
             if (!state.selectedIds.includes(id)) state.selectedIds = [id];
             render();
-            const item = getCurrentDir().find(i => i.id === id);
+            const matter = getActiveMatter();
+            const findItem = (arr, tid) => {
+                for(let item of arr) {
+                    if(item.id === tid) return item;
+                    if(item.children) { let found = findItem(item.children, tid); if(found) return found; }
+                }
+            };
+            const item = findItem(matter.files, id);
             const menu = document.getElementById('ctx-menu');
             menu.style.display = 'block'; menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px';
             menu.innerHTML = `
                 <div class="ctx-item" onclick="openPreview('${id}')"><i class="ph ph-eye"></i> View Artifact</div>
+                <div class="ctx-item" onclick="downloadItem('${id}')"><i class="ph ph-download-simple"></i> Download File</div>
                 <div class="ctx-item hold-item" onclick="toggleLegalHold()"><i class="ph ph-scales"></i> ${item.legalHold ? 'Release Hold' : 'Apply Legal Hold'}</div>
                 <div style="height:1px; background:var(--border); margin:4px 0"></div>
                 <div class="ctx-item" onclick="updateStatus('awaiting')"><span class="status-dot" style="background:var(--status-awaiting)"></span> Set Awaiting</div>
@@ -759,36 +1102,6 @@
             `;
         }
 
-        // PREVIEW AS IS FUNCTION
-        function openPreview(id) {
-            const item = getCurrentDir().find(i => i.id === id);
-            if(!item || item.type === 'folder') return;
-
-            document.getElementById('preview-title').innerText = item.name;
-            const body = document.getElementById('preview-body');
-            body.innerHTML = '';
-
-            const type = item.type;
-            if (type.startsWith('image/')) {
-                body.innerHTML = `<img src="${item.data}" style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 10px 30px rgba(0,0,0,0.1)">`;
-            } else if (type === 'application/pdf') {
-                body.innerHTML = `<embed src="${item.data}" type="application/pdf" width="100%" height="100%">`;
-            } else if (type.startsWith('text/') || type.includes('javascript') || type.includes('json') || type.includes('html')) {
-                const text = atob(item.data.split(',')[1]);
-                body.innerHTML = `<pre style="width:100%; height:100%; padding:30px; font-family:'JetBrains Mono'; font-size:13px; background:white; overflow:auto; white-space:pre-wrap; border:1px solid var(--border)">${text}</pre>`;
-            } else {
-                body.innerHTML = `
-                    <div style="text-align:center">
-                        <i class="ph ph-file-warning" style="font-size:64px; color:var(--text-muted)"></i>
-                        <h4 style="margin-top:15px">No Native Preview Available</h4>
-                        <p style="color:var(--text-muted); font-size:12px; margin-top:5px">Type: ${type}</p>
-                        <button class="btn btn-brand" style="margin:20px auto" onclick="copyToClipboard('${item.hex}')">Copy Hex String</button>
-                    </div>
-                `;
-            }
-            openModal('preview-modal');
-        }
-
         function undo() { if(!undoStack.length) return; redoStack.push(JSON.stringify(state.matters)); state.matters = JSON.parse(undoStack.pop()); save(); }
         function redo() { if(!redoStack.length) return; undoStack.push(JSON.stringify(state.matters)); state.matters = JSON.parse(redoStack.pop()); save(); }
         function copySelection(mode) { const items = getCurrentDir().filter(i => state.selectedIds.includes(i.id)); state.clipboard = { action: mode, items: JSON.parse(JSON.stringify(items)) }; save(); }
@@ -799,8 +1112,8 @@
         function exportManifest() {
             const matter = getActiveMatter();
             const items = getCurrentDir();
-            let csv = "Name,Status,Bates,Size,Hash,Hold\n";
-            items.forEach(i => csv += `"${i.name}","${getStatusLabel(i.status)}","${i.bates}","${i.size}","${i.hash}","${i.legalHold?'Y':'N'}"\n`);
+            let csv = "Name,Status,Bates,Size,Hash,Hold,ReviewNotes,AIScore,OCRTranscript\n";
+            items.forEach(i => csv += `"${i.name}","${getStatusLabel(i.status)}","${i.bates}","${i.size}","${i.hash}","${i.legalHold?'Y':'N'}","${i.reviewNotes||''}","${Math.round(i.aiScore*100)}%","${(i.ocrText||'').replace(/"/g, '""')}"\n`);
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
