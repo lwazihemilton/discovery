@@ -32,6 +32,7 @@
             --status-awaiting: #94a3b8;
             --status-progress: #f59e0b;
             --status-complete: #10b981;
+            --status-public: #0ea5e9;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
@@ -183,6 +184,12 @@
         .intel-tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 5px; margin-bottom: 5px; text-transform: uppercase; }
         .tag-theme { background: #e0f2fe; color: #0369a1; }
         .tag-entity { background: #dcfce7; color: #166534; }
+        
+        /* --- DUE DILIGENCE SPECIFIC --- */
+        .risk-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .risk-high { background: #fee2e2; color: #b91c1c; }
+        .risk-med { background: #fef3c7; color: #b45309; }
+        .risk-low { background: #d1fae5; color: #047857; }
 
         .preview-pane { 
             width: 100%; 
@@ -253,6 +260,7 @@
         .ctx-item:hover { background: var(--primary); color: white; }
         .ctx-item.danger:hover { background: var(--rose); }
         .ctx-item.hold-item:hover { background: var(--hold-color); }
+        .ctx-item.public-item:hover { background: var(--status-public); }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(2px); }
         .modal { 
@@ -274,6 +282,7 @@
         .status-bar { height: 28px; background: #f8fafc; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; font-size: 11px; font-weight: 500; color: var(--text-muted); flex-shrink: 0; }
         
         .hold-badge { color: var(--hold-color); margin-left: 5px; font-size: 14px; vertical-align: middle; }
+        .public-badge { color: var(--status-public); margin-left: 5px; font-size: 14px; vertical-align: middle; }
 
         .ai-priority-badge { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; background: #ede9fe; color: var(--hold-color); padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
 
@@ -293,7 +302,6 @@
                 overflow: hidden;
             }
             
-            /* Bottom Primary Navigation (Refactored Sidebar) */
             .sidebar { 
                 position: fixed;
                 bottom: 0;
@@ -344,7 +352,6 @@
 
             .breadcrumb-bar { font-size: 10px; }
 
-            /* Preview Modal Fullscreen for Mobile */
             #preview-modal .modal { 
                 width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; 
                 margin: 0; border-radius: 0; padding: 10px;
@@ -353,22 +360,20 @@
                 flex-direction: column; 
                 height: calc(100% - 60px); 
                 overflow-y: auto; 
-                -webkit-overflow-scrolling: touch; /* Momentum scrolling for mobile container */
+                -webkit-overflow-scrolling: touch; 
             }
             
-            /* --- CRITICAL: MOBILE PREVIEW SCROLL IMPROVEMENTS --- */
             .preview-content { 
-                height: 50vh; /* Occupy half the vertical screen on mobile */
+                height: 50vh; 
                 flex: none; 
                 width: 100%; 
-                overflow: auto; /* Allow the actual document content to scroll */
+                overflow: auto; 
                 -webkit-overflow-scrolling: touch;
                 background: #f1f5f9;
                 border-radius: 6px;
-                display: block; /* Change from flex to block to allow natural element layout */
+                display: block; 
             }
             
-            /* Ensure text content wraps and scrolls nicely on mobile */
             .preview-content pre {
                 padding: 15px !important;
                 white-space: pre-wrap !important;
@@ -377,7 +382,6 @@
                 background: white;
             }
             
-            /* Ensure images don't break the scroll container */
             .preview-content img {
                 max-width: 100% !important;
                 height: auto !important;
@@ -415,6 +419,7 @@
         
         <button class="btn action-btn" disabled onclick="runOCRAll()"><i class="ph ph-scan"></i> <span class="mobile-hide">Intel</span></button>
         
+        <button class="btn action-btn" disabled onclick="generateCaseSummary()"><i class="ph ph-file-text"></i> <span class="mobile-hide">Summary Doc</span></button>
         <button class="btn action-btn" disabled onclick="exportManifest()"><i class="ph ph-file-csv"></i> <span class="mobile-hide">Report</span></button>
         
         <div style="width:1px; height:20px; background:var(--border); margin:0 5px; flex-shrink:0;"></div>
@@ -474,6 +479,8 @@
             <div style="padding: 20px 20px 10px 20px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid var(--border); margin-top: 10px;">Intelligence</div>
             <div class="sidebar-item" id="nav-explorer" onclick="setUIMode('explorer')"><i class="ph ph-folder"></i> Artifact Vault</div>
             <div class="sidebar-item" id="nav-analysis" onclick="setUIMode('analysis')"><i class="ph ph-cpu"></i> Intel Lab</div>
+            <div class="sidebar-item" id="nav-diligence" onclick="setUIMode('diligence')"><i class="ph ph-shield-check"></i> Due Diligence</div>
+            <div class="sidebar-item" id="nav-public" onclick="setUIMode('public')"><i class="ph ph-globe"></i> Public Repository</div>
         </aside>
 
         <!-- EXPLORER VAULT (Main Document View) -->
@@ -510,14 +517,42 @@
             </div>
         </section>
 
-        <!-- ANALYSIS REPORT VIEW (New Intelligence Page) -->
+        <!-- ANALYSIS REPORT VIEW -->
         <section class="explorer-container" id="analysis-page" style="display:none;">
             <div class="breadcrumb-bar">Case Intelligence Report & OCR Results</div>
-            <div class="scroll-area" style="padding: 20px;" id="analysis-content">
-                <!-- Analysis cards injected here -->
-            </div>
+            <div class="scroll-area" style="padding: 20px;" id="analysis-content"></div>
             <div class="status-bar">
                 <div id="analysis-stat-count">Consolidated Evidence Report</div>
+            </div>
+        </section>
+
+        <!-- DUE DILIGENCE VIEW -->
+        <section class="explorer-container" id="diligence-page" style="display:none;">
+            <div class="breadcrumb-bar">Due Diligence Audit & Risk Assessment</div>
+            <div class="scroll-area" style="padding: 20px;" id="diligence-content"></div>
+            <div class="status-bar">
+                <div id="diligence-stat-count">Risk Assessment Report</div>
+            </div>
+        </section>
+
+        <!-- PUBLIC REPOSITORY VIEW -->
+        <section class="explorer-container" id="public-page" style="display:none;">
+            <div class="breadcrumb-bar">Public Repository / Disclosed Artifacts</div>
+            <div class="scroll-area" id="public-content">
+                <table id="public-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%">Artifact Name</th>
+                            <th>Release Date</th>
+                            <th>Kind</th>
+                            <th>Public Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody id="public-body"></tbody>
+                </table>
+            </div>
+            <div class="status-bar">
+                <div id="public-stat-count">0 Public Disclosures</div>
             </div>
         </section>
 
@@ -677,7 +712,7 @@
             LwaziBrain.docCounts = { responsive: 0, nonResponsive: 0 };
             LwaziBrain.wordCounts = { responsive: {}, nonResponsive: {} };
 
-            const items = getAllFilesRecursive(matter.files); // Updated to check all files
+            const items = getAllFilesRecursive(matter.files); 
             items.forEach(i => {
                 if (i.reviewTags && (i.reviewTags.includes('responsive') || i.reviewTags.includes('non-responsive'))) {
                     const label = i.reviewTags.includes('responsive') ? 'responsive' : 'non-responsive';
@@ -696,15 +731,43 @@
             });
         }
 
-        // --- IMPROVEMENT: INTELLIGENCE EXTRACTION UTILITY ---
+        // --- DUE DILIGENCE RISK ENGINE ---
+        function performDueDiligence(text) {
+            if (!text) return [];
+            const risks = [];
+            const content = text.toLowerCase();
+
+            const checkList = [
+                { category: 'IP Ownership', risk: 'High', words: ['gpl', 'agpl', 'copyleft', 'public domain', 'open source license'], msg: 'Potential Copyleft License detected (GPL/AGPL).' },
+                { category: 'Compliance', risk: 'High', words: ['indemnify', 'indemnification', 'hold harmless', 'liability cap', 'breach'], msg: 'Aggressive Indemnity or Liability clauses found.' },
+                { category: 'Corporate Governance', risk: 'Medium', words: ['change of control', 'assignment of rights', 'acquisition', 'board approval'], msg: 'Change of Control or Assignment restriction detected.' },
+                { category: 'Confidentiality', risk: 'Medium', words: ['non-disclosure', 'trade secret', 'confidential information', 'proprietary'], msg: 'Sensitive IP/Confidentiality language detected.' },
+                { category: 'Employment', risk: 'Medium', words: ['non-compete', 'solicitation', 'work for hire', 'invention assignment'], msg: 'Employment restrictions or IP Assignment issues.' },
+                { category: 'Financial', risk: 'Low', words: ['payment terms', 'late fee', 'audit right', 'royalty'], msg: 'Standard commercial/financial clauses.' }
+            ];
+
+            checkList.forEach(rule => {
+                const found = rule.words.filter(w => content.includes(w));
+                if (found.length > 0) {
+                    risks.push({
+                        category: rule.category,
+                        risk: rule.risk,
+                        msg: rule.msg,
+                        hits: found
+                    });
+                }
+            });
+
+            return risks;
+        }
+
+        // --- INTELLIGENCE EXTRACTION UTILITY ---
         function analyzeTextIntelligence(text) {
             if (!text) return { entities: { emails: [], amounts: [] }, themes: [] };
 
-            // 1. Entity Extraction (Regex-based)
             const emailMatch = text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi) || [];
             const moneyMatch = text.match(/\$\d+(?:\.\d+)?(?:\s*[kmbt])?/gi) || [];
             
-            // 2. Theme/Keyword Frequency Analysis
             const stopWords = new Set(['about', 'above', 'after', 'again', 'against', 'all', 'and', 'any', 'are', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 'can', 'did', 'does', 'doing', 'down', 'during', 'each', 'few', 'for', 'from', 'further', 'had', 'has', 'have', 'having', 'here', 'how', 'into', 'its', 'just', 'more', 'most', 'now', 'off', 'once', 'only', 'other', 'our', 'out', 'over', 'own', 'same', 'she', 'should', 'some', 'such', 'than', 'that', 'the', 'their', 'them', 'then', 'there', 'these', 'they', 'this', 'those', 'through', 'too', 'under', 'until', 'up', 'very', 'was', 'were', 'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'why', 'with', 'you', 'your']);
             
             const words = text.toLowerCase().match(/\b(\w{5,})\b/g) || [];
@@ -739,19 +802,14 @@
 
                 let text = "";
 
-                // CASE 1: IMAGE (Tesseract)
                 if (item.type.startsWith('image/')) {
                     const result = await Tesseract.recognize(item.data, 'eng');
                     text = result.data.text;
                 }
-                
-                // CASE 2: WORD (.docx)
                 else if (item.name.toLowerCase().endsWith('.docx')) {
                     const result = await mammoth.extractRawText({ arrayBuffer: bytes.buffer });
                     text = result.value;
                 }
-
-                // CASE 3: PDF (Digital Text Layer)
                 else if (item.type === 'application/pdf') {
                     const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
                     let fullText = "";
@@ -763,9 +821,9 @@
                     text = fullText;
                 }
                 
-                // --- INTEGRATED AI ANALYSIS ---
                 if (text) {
                     item.intelligence = analyzeTextIntelligence(text);
+                    item.diligenceRisks = performDueDiligence(text);
                 }
 
                 return text;
@@ -779,7 +837,7 @@
             const matter = getActiveMatter();
             if (!matter) return;
             
-            const items = getAllFilesRecursive(matter.files); // Run across all files, not just current dir
+            const items = getAllFilesRecursive(matter.files); 
             const targets = items.filter(i => (i.type.startsWith('image/') || i.type === 'application/pdf' || i.name.endsWith('.docx')) && !i.ocrText);
             
             if (targets.length === 0) return alert("No un-processed artifacts found in this case.");
@@ -833,7 +891,7 @@
         if(!state.selectedIds) state.selectedIds = [];
         if(!state.viewMode) state.viewMode = 'list';
         if(!state.sort) state.sort = { key: 'name', asc: true };
-        if(!state.uiMode) state.uiMode = 'explorer'; // Track explorer vs analysis view
+        if(!state.uiMode) state.uiMode = 'explorer'; 
         
         let undoStack = [], redoStack = [], draggedItems = [], currentReviewId = null;
 
@@ -932,6 +990,87 @@
             return hex.trim().toUpperCase();
         }
 
+        // --- CASE SUMMARY GENERATOR ---
+        async function generateCaseSummary() {
+            const matter = getActiveMatter();
+            if (!matter) return;
+            
+            const allFiles = getAllFilesRecursive(matter.files);
+            const dir = getCurrentDir();
+            
+            let content = `CASE BRIEFING & EVIDENCE SUMMARY\n`;
+            content += `=================================\n`;
+            content += `MATTER NAME: ${matter.name}\n`;
+            content += `MATTER ID: ${matter.id}\n`;
+            content += `BATES PREFIX: ${matter.prefix}\n`;
+            content += `DATE GENERATED: ${new Date().toLocaleString()}\n`;
+            content += `GENERATED BY: NODE_882\n\n`;
+            
+            content += `I. EVIDENCE INVENTORY (${allFiles.length} ARTIFACTS)\n`;
+            content += `-------------------------------------------------\n`;
+            
+            allFiles.forEach((f, idx) => {
+                content += `${idx+1}. [${f.bates}] ${f.name}\n`;
+                content += `   Type: ${f.type} | Size: ${f.size}\n`;
+                content += `   Status: ${getStatusLabel(f.status).toUpperCase()}\n`;
+                if(f.reviewTags && f.reviewTags.length > 0) content += `   Legal Tags: ${f.reviewTags.join(', ')}\n`;
+                content += `\n`;
+            });
+
+            content += `II. INTELLIGENCE INSIGHTS\n`;
+            content += `-------------------------------------------------\n`;
+            const allThemes = new Set();
+            const allRisks = [];
+            
+            allFiles.forEach(f => {
+                if(f.intelligence && f.intelligence.themes) f.intelligence.themes.forEach(t => allThemes.add(t));
+                if(f.diligenceRisks) f.diligenceRisks.forEach(r => allRisks.push({ name: f.name, bates: f.bates, ...r }));
+            });
+
+            content += `Agreggated Case Themes: ${[...allThemes].join(', ') || 'No themes extracted.'}\n\n`;
+            
+            if(allRisks.length > 0) {
+                content += `Key Risk Findings:\n`;
+                allRisks.forEach(r => {
+                    content += `! [${r.risk}] ${r.category} detected in ${r.bates} (${r.name})\n`;
+                });
+            } else {
+                content += `Risk Assessment: No automated high-level risks detected across corpus.\n`;
+            }
+
+            content += `\nIII. CONCLUSION\n`;
+            content += `-------------------------------------------------\n`;
+            content += `This summary is generated based on available intelligence data and OCR transcripts.\n`;
+            content += `Forensic Integrity (SHA-256) mapping is maintained in the Vault Manifest.\n\n`;
+            content += `[END OF REPORT]`;
+
+            const batesNum = (matter.lastBates || 0) + 1;
+            const bates = `${matter.prefix}-${batesNum.toString().padStart(6, '0')}`;
+            matter.lastBates = batesNum;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const hash = "SUMMARY_ARTIFACT_" + Date.now();
+            const dataUrl = await new Promise(r => {
+                const reader = new FileReader();
+                reader.onload = e => r(e.target.result);
+                reader.readAsDataURL(blob);
+            });
+
+            pushHistory();
+            dir.push({
+                id: 'FIL-' + Date.now(),
+                name: `SUMMARY_${matter.prefix}_${Date.now()}.txt`,
+                bates: bates, type: 'text/plain',
+                size: (blob.size / 1024).toFixed(2) + ' KB', date: new Date().toISOString(),
+                created: new Date().toISOString(), hash: hash, hex: "N/A - SYSTEM GEN", legalHold: false, status: 'complete',
+                data: dataUrl, reviewTags: ['material'], reviewNotes: "Automated case-wide briefing document.",
+                aiScore: 1.0, ocrText: content, uploader: "NODE_882", isPublic: false
+            });
+
+            save();
+            alert("Summary document generated and added to folder.");
+        }
+
         // --- DRAG & DROP ---
         function onDragStart(e, id) {
             if (!state.selectedIds.includes(id)) state.selectedIds = [id];
@@ -1007,7 +1146,7 @@
                     name: f.name, bates: bates, type: f.type || 'application/octet-stream',
                     size: (f.size / 1024).toFixed(2) + ' KB', date: new Date().toISOString(),
                     created: new Date().toISOString(), hash: hash, hex: hex, legalHold: false, status: 'awaiting',
-                    data: content, reviewTags: [], reviewNotes: "", aiScore: 0, ocrText: "", uploader: "NODE_882"
+                    data: content, reviewTags: [], reviewNotes: "", aiScore: 0, ocrText: "", uploader: "NODE_882", isPublic: false
                 });
                 if(!matter.audit) matter.audit = [];
                 matter.audit.push({ date: new Date().toLocaleString(), msg: `Vault Ingest: ${f.name} (${bates})` });
@@ -1038,6 +1177,24 @@
             state.selectedIds.forEach(id => {
                 const item = dir.find(i => i.id === id);
                 if (item) item.legalHold = !item.legalHold;
+            });
+            save();
+        }
+
+        function togglePublic() {
+            if (!state.selectedIds.length) return;
+            pushHistory();
+            const dir = getCurrentDir();
+            state.selectedIds.forEach(id => {
+                const item = dir.find(i => i.id === id);
+                if (item) {
+                    if(item.legalHold) {
+                        alert("Operation Blocked: Item is under Legal Hold and cannot be publicised.");
+                        return;
+                    }
+                    item.isPublic = !item.isPublic;
+                    if(item.isPublic && !item.releaseDate) item.releaseDate = new Date().toISOString();
+                }
             });
             save();
         }
@@ -1122,12 +1279,15 @@
         function render() {
             runInference(); 
 
-            // Active view selection logic
             document.getElementById('explorer-view').style.display = state.uiMode === 'explorer' ? 'flex' : 'none';
             document.getElementById('analysis-page').style.display = state.uiMode === 'analysis' ? 'flex' : 'none';
+            document.getElementById('diligence-page').style.display = state.uiMode === 'diligence' ? 'flex' : 'none';
+            document.getElementById('public-page').style.display = state.uiMode === 'public' ? 'flex' : 'none';
             
             document.getElementById('nav-explorer').classList.toggle('active', state.uiMode === 'explorer');
             document.getElementById('nav-analysis').classList.toggle('active', state.uiMode === 'analysis');
+            document.getElementById('nav-diligence').classList.toggle('active', state.uiMode === 'diligence');
+            document.getElementById('nav-public').classList.toggle('active', state.uiMode === 'public');
 
             document.getElementById('matter-list').innerHTML = state.matters.map(m => `
                 <div class="sidebar-item ${state.selectedMatterId === m.id ? 'active' : ''}" onclick="selectMatter('${m.id}')">
@@ -1147,12 +1307,15 @@
 
             if (!matter) {
                 document.getElementById('explorer-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:120px;">Select a matter to begin investigation.</td></tr>';
-                document.getElementById('analysis-content').innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:100px;">Select a matter to view case intelligence.</p>';
                 return;
             }
 
             if (state.uiMode === 'analysis') {
                 renderAnalysisReport(matter);
+            } else if (state.uiMode === 'diligence') {
+                renderDiligenceReport(matter);
+            } else if (state.uiMode === 'public') {
+                renderPublicVault(matter);
             } else {
                 renderExplorer(matter);
             }
@@ -1252,6 +1415,80 @@
             document.getElementById('analysis-stat-count').innerText = `Report generated for ${allFiles.length} artifacts.`;
         }
 
+        function renderDiligenceReport(matter) {
+            const allFiles = getAllFilesRecursive(matter.files);
+            const container = document.getElementById('diligence-content');
+            
+            if (allFiles.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:100px;">No artifacts found for audit.</p>';
+                return;
+            }
+
+            container.innerHTML = allFiles.map(i => {
+                const risks = i.diligenceRisks || [];
+                let riskSummary = risks.map(r => `
+                    <div style="border-left: 3px solid ${r.risk === 'High' ? 'var(--rose)' : 'var(--amber)'}; padding-left:12px; margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="risk-badge risk-${r.risk.toLowerCase()}">${r.risk} RISK</span>
+                            <span style="font-size:12px; font-weight:700;">${r.category}</span>
+                        </div>
+                        <div style="font-size:11px; margin-top:4px;">${r.msg}</div>
+                        <div class="mono" style="font-size:10px; color:var(--primary); margin-top:4px;">Flags: ${r.hits.join(', ')}</div>
+                    </div>
+                `).join('');
+
+                if (risks.length === 0) {
+                    riskSummary = '<p style="font-size:12px; color:var(--text-muted); font-style:italic;">No automated risks detected. Manual review recommended.</p>';
+                }
+
+                return `
+                    <div class="analysis-card" style="border-top: 4px solid ${risks.length > 0 ? 'var(--amber)' : 'var(--emerald)'}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <div>
+                                <h4 style="font-size:14px;">${i.name}</h4>
+                                <div class="mono" style="font-size:10px; color:var(--text-muted);">REF: ${i.bates}</div>
+                            </div>
+                            <span class="risk-badge" style="background:${risks.length > 0 ? '#fff7ed' : '#f0fdf4'}; color:${risks.length > 0 ? '#c2410c' : '#15803d'}">
+                                ${risks.length} FINDINGS
+                            </span>
+                        </div>
+                        <div>
+                            <div class="meta-label">Audit Observations</div>
+                            <div style="margin-top:10px;">${riskSummary}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('diligence-stat-count').innerText = `Risk Audit completed for ${allFiles.length} artifacts.`;
+        }
+
+        function renderPublicVault(matter) {
+            const allFiles = getAllFilesRecursive(matter.files);
+            const publicFiles = allFiles.filter(i => i.isPublic);
+            const container = document.getElementById('public-body');
+            
+            if (publicFiles.length === 0) {
+                container.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:120px;">No artifacts have been released to the public.</td></tr>';
+                document.getElementById('public-stat-count').innerText = "0 Public Disclosures";
+                return;
+            }
+
+            container.innerHTML = publicFiles.map(i => `
+                <tr onclick="openPreview('${i.id}')" style="cursor:pointer;">
+                    <td>
+                        <i class="ph ph-globe" style="color:var(--status-public); margin-right:8px"></i> 
+                        ${i.name}
+                    </td>
+                    <td>${new Date(i.releaseDate).toLocaleString()}</td>
+                    <td>${i.type.split('/')[1]?.toUpperCase() || 'DATA'}</td>
+                    <td class="mono">${i.hash.substring(0,16)}...</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('public-stat-count').innerText = `${publicFiles.length} Public Disclosures`;
+        }
+
         function renderList(items, isSearching) {
             document.getElementById('explorer-body').innerHTML = items.map(i => {
                 const aiBadge = (i.aiScore > 0.6) ? `<span class="ai-priority-badge">AI SCORE: ${Math.round(i.aiScore * 100)}%</span>` : '';
@@ -1269,7 +1506,10 @@
                     oncontextmenu="handleItemContext(event, '${i.id}')">
                     <td>
                         <i class="${i.type==='folder'?'ph-fill ph-folder':'ph ph-file-text'}" style="color:${i.type==='folder'?'var(--amber)':'var(--primary)'}; margin-right:8px"></i> 
-                        ${i.name} ${i.legalHold ? '<i class="ph-fill ph-scales hold-badge"></i>' : ''} ${aiBadge}
+                        ${i.name} 
+                        ${i.legalHold ? '<i class="ph-fill ph-scales hold-badge"></i>' : ''} 
+                        ${i.isPublic ? '<i class="ph ph-globe public-badge"></i>' : ''}
+                        ${aiBadge}
                         ${locInfo}
                         ${contextSnippet}
                     </td>
@@ -1298,13 +1538,12 @@
                      oncontextmenu="handleItemContext(event, '${i.id}')">
                     <span class="status-dot" style="background:var(--status-${i.status || 'awaiting'})"></span>
                     <i class="${i.type==='folder'?'ph-fill ph-folder':'ph ph-file-text'}" style="color:${i.type==='folder'?'var(--amber)':'var(--primary)'}"></i>
-                    <span>${i.name} ${i.legalHold ? '<br>⚖️' : ''}</span>
+                    <span>${i.name} ${i.legalHold ? '<br>⚖️' : ''} ${i.isPublic ? '<br>🌐' : ''}</span>
                     ${aiBadge}
                 </div>
             `}).join('');
         }
 
-        // --- IMPROVEMENT: ENHANCED INSPECTOR DISPLAY ---
         function updateInspector() {
             const content = document.getElementById('inspector-content');
             const hexSect = document.getElementById('hex-section');
@@ -1332,7 +1571,6 @@
             } else if (item) {
                 const aiVal = item.aiScore ? `${Math.round(item.aiScore * 100)}% Match` : 'N/A';
                 
-                // Build Intelligence Section
                 let intelHtml = "";
                 if (item.intelligence) {
                     const emails = item.intelligence.entities.emails.map(e => `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-size:10px; margin-right:4px; margin-bottom:4px; display:inline-block;">${e}</span>`).join('');
@@ -1365,6 +1603,7 @@
                     <div class="meta-group"><div class="meta-label">Ingested By</div><div class="meta-value mono">${item.uploader || 'NODE_882'}</div></div>
                     <div class="meta-group"><div class="meta-label">SHA-256 Signature</div><div class="meta-value mono" style="color:var(--emerald)">${item.hash}</div></div>
                     <div class="meta-group"><div class="meta-label">Bates Identification</div><div class="meta-value mono">${item.bates || 'N/A'}</div></div>
+                    <div class="meta-group"><div class="meta-label">Public Status</div><div class="meta-value" style="color:var(--status-public)">${item.isPublic ? 'Publicly Released' : 'Private'}</div></div>
                 `;
                 if (item.hex) { hexSect.style.display = 'block'; document.getElementById('hex-dump').innerText = item.hex; }
                 else { hexSect.style.display = 'none'; }
@@ -1374,7 +1613,6 @@
             }
         }
 
-        // --- PREVIEW & REVIEW WORKSTATION ---
         function openPreview(id) {
             const matter = getActiveMatter();
             const findItem = (arr, tid) => {
@@ -1420,7 +1658,11 @@
                 }
             };
             const item = findItem(matter.files, currentReviewId);
-            if (item) { item.ocrText = document.getElementById('ocr-text').value; save(); }
+            if (item) { 
+                item.ocrText = document.getElementById('ocr-text').value; 
+                item.diligenceRisks = performDueDiligence(item.ocrText);
+                save(); 
+            }
         }
 
         function loadReviewUI(item) {
@@ -1502,6 +1744,7 @@
                 <div class="ctx-item" onclick="openPreview('${id}')"><i class="ph ph-eye"></i> View Artifact</div>
                 <div class="ctx-item" onclick="downloadItem('${id}')"><i class="ph ph-download-simple"></i> Download File</div>
                 <div class="ctx-item hold-item" onclick="toggleLegalHold()"><i class="ph ph-scales"></i> ${item.legalHold ? 'Release Hold' : 'Apply Legal Hold'}</div>
+                <div class="ctx-item public-item" onclick="togglePublic()"><i class="ph ph-globe"></i> ${item.isPublic ? 'Make Private' : 'Publicise Artifact'}</div>
                 <div style="height:1px; background:var(--border); margin:4px 0"></div>
                 <div class="ctx-item" onclick="updateStatus('awaiting')"><span class="status-dot" style="background:var(--status-awaiting)"></span> Set Awaiting</div>
                 <div class="ctx-item" onclick="updateStatus('progress')"><span class="status-dot" style="background:var(--status-progress)"></span> Set In Progress</div>
@@ -1544,9 +1787,9 @@
 
         function exportManifest() {
             const matter = getActiveMatter();
-            const items = getAllFilesRecursive(matter.files); // Export ALL files
-            let csv = "Name,Status,Bates,Size,Hash,Hold,ReviewNotes,AIScore,OCRTranscript\n";
-            items.forEach(i => csv += `"${i.name}","${getStatusLabel(i.status)}","${i.bates}","${i.size}","${i.hash}","${i.legalHold?'Y':'N'}","${i.reviewNotes||''}","${Math.round(i.aiScore*100)}%","${(i.ocrText||'').replace(/"/g, '""')}"\n`);
+            const items = getAllFilesRecursive(matter.files); 
+            let csv = "Name,Status,Bates,Size,Hash,Hold,Public,ReviewNotes,AIScore,OCRTranscript,RiskCount\n";
+            items.forEach(i => csv += `"${i.name}","${getStatusLabel(i.status)}","${i.bates}","${i.size}","${i.hash}","${i.legalHold?'Y':'N'}","${i.isPublic?'Y':'N'}","${i.reviewNotes||''}","${Math.round(i.aiScore*100)}%","${(i.ocrText||'').replace(/"/g, '""')}","${(i.diligenceRisks||[]).length}"\n`);
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
